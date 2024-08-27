@@ -13,11 +13,11 @@ class Edge:
         self.weight = weight
 
 class Graph:
-    def __init__(self, noVertices, edges):
-        self.noVertices = noVertices
+    def __init__(self, no_vertices, edges):
+        self.noVertices = no_vertices
         self.edges = edges
 
-def inputType():
+def input_type():
     print('1. APi')
     print('2. Custom')
     type = input();
