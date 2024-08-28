@@ -1,20 +1,5 @@
 import math
-from py_exchangeratesapi import Api
 import requests
-
-from_currency = str(
-    input("Enter in the currency you'd like to convert from: ")).upper()
-
-to_currency = str(
-    input("Enter in the currency you'd like to convert to: ")).upper()
-
-amount = float(input("Enter in the amount of money: "))
-
-response = requests.get(
-    f"https://api.frankfurter.app/latest?amount={amount}&from={from_currency}&to={to_currency}")
-
-print(
-    f"{amount} {from_currency} is {response.json()['rates'][to_currency]} {to_currency}")
 
 class Edge:
     def __init__(self, start, destination, weight):
@@ -23,8 +8,8 @@ class Edge:
         self.weight = weight
 
 class Graph:
-    def __init__(self, noVertices):
-        self.noVertices = noVertices
+    def __init__(self, no_vertices):
+        self.noVertices = no_vertices
         self.edges = []
 
     def add_edge(self, start, destination, weight):
@@ -51,7 +36,8 @@ class Graph:
                 return True, self.get_negative_cycle(predecessor, edge.destination)
         return False, distance
 
-    def get_negative_cycle(self, predecessor, start):
+    @staticmethod
+    def get_negative_cycle(predecessor, start):
         # find negative cycle using predecessor array
         cycle = []
         visited = set()
@@ -69,13 +55,13 @@ class Graph:
         while node != cycle_start:
             cycle.append(node)
             node = predecessor[node]
-        cycle.append(cycle_start)
 
+        cycle.append(cycle_start)
         cycle.reverse()
         return cycle
 
-def inputType():
-    print('1. APi')
+def input_type():
+    print('1. API (not implemented yet)')
     print('2. Custom')
     choice = input('Choose input type (1 or 2): ')
 
@@ -87,14 +73,17 @@ def inputType():
         return 'Custom'
     else:
         print('Invalid choice. Try again.')
-        return inputType()
+        return input_type()
 
-def fetch_exchange_rates(api_key):
-    api = Api(api_key)
-    rates = api.get_rates()
-    currencies = list(rates.keys())
-    matrix = [[1 if i == j else rates[currencies[j]] / rates[currencies[i]] for j in range(len(currencies))] for i in range(len(currencies))]
-    return currencies, matrix
+def fetch_exchange_rates(currencies):
+    # Fetch the latest exchange rates for the specified currencies
+    response = requests.get(f"https://api.exchangerate-api.com/v4/latest/USD")
+
+    rates = response.json().get('rates', {})
+
+    matrix = [[1 if i == j else rates[currencies[j]] / rates[currencies[i]] for j in range(len(currencies))] for i in
+              range(len(currencies))]
+    return matrix
 
 def get_exchange_rates_from_input():
     currencies = input('Enter currencies (comma-separated): ').split(',')
@@ -137,13 +126,16 @@ def find_best_conversion_rate(graph, currencies, source, target):
     print(f"Best conversion rate from {source} to {target}: {best_rate}")
 
 def main():
-    input_choice = inputType()
-    currencies = []
-    matrix = []
+    input_choice = input_type()
 
     if input_choice == 'API':
-        api_key = input('Enter your API key: ')
-        currencies, matrix = fetch_exchange_rates(api_key)
+        currencies = [currency.strip() for currency in input("Enter currencies (comma-separated): ").split(',')]
+        matrix = fetch_exchange_rates(currencies)
+
+        # Print the exchange rate matrix
+        print("Exchange Rate Matrix:")
+        for row in matrix:
+            print(" ".join(f"{rate:.4f}" for rate in row))
     else:
         currencies, matrix = get_exchange_rates_from_input()
 
