@@ -99,4 +99,7 @@ print('GRAPH 1')
 graph.bellman_ford(1)
 
 print('GRAPH 2')
+
 graph2.bellman_ford(1)
+
+
