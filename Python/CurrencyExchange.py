@@ -1,5 +1,9 @@
 import math
 import requests
+from decimal import Decimal, getcontext
+
+# Set precision for Decimal operations
+getcontext().prec = 50
 
 class Edge:
     def __init__(self, start, destination, weight):
@@ -15,30 +19,47 @@ class Graph:
     def add_edge(self, start, destination, weight):
         self.edges.append(Edge(start, destination, weight))
 
-    def bellman_ford(self, source, tolerance=1e-5):
+    def bellman_ford(self, source, tolerance=Decimal('1e-15')):
         # Initialize distances and predecessors
-        distance = [float('inf')] * self.noVertices
+        distance = [Decimal('inf')] * self.noVertices
         predecessor = [-1] * self.noVertices
-        distance[source] = 0
+        distance[source] = Decimal('0')
 
         for _ in range(self.noVertices - 1):
             for edge in self.edges:
-                if distance[edge.start] != float('inf') and distance[edge.start] + edge.weight < distance[
-                    edge.destination]:
+                if distance[edge.start] != Decimal('inf') and distance[edge.start] + edge.weight < distance[edge.destination]:
                     distance[edge.destination] = distance[edge.start] + edge.weight
                     predecessor[edge.destination] = edge.start
 
-        # Check for negative weight cycles
+        # Check for negative weight cycles and find all arbitrages
+        arbitrages = []
+        seen_cycles = set()  # Set to store unique cycles
+
         for edge in self.edges:
             if distance[edge.start] + edge.weight < distance[edge.destination]:
                 cycle = self.get_negative_cycle(predecessor, edge.destination)
-                cycle_product = 1.0
-                for i in range(len(cycle) - 1):
-                    cycle_product *= 10 ** (-self.edges[i].weight)
-                if cycle_product > 1 + tolerance:
-                    return True, cycle
 
-        return False, distance
+                # Normalize cycle by sorting to avoid duplicates
+                normalized_cycle = tuple(sorted(cycle))
+
+                # Check if we already found this cycle
+                if normalized_cycle not in seen_cycles:
+                    seen_cycles.add(normalized_cycle)
+                    cycle_product = Decimal('1.0')
+                    for i in range(len(cycle) - 1):
+                        start_currency = cycle[i]
+                        next_currency = cycle[i + 1]
+                        for e in self.edges:
+                            if e.start == start_currency and e.destination == next_currency:
+                                cycle_product *= Decimal(10) ** (-e.weight)
+                                break
+                    if cycle_product > 1 + tolerance:
+                        arbitrages.append((cycle, cycle_product))
+
+        if arbitrages:
+            return True, arbitrages
+        else:
+            return False, distance
 
     @staticmethod
     def get_negative_cycle(predecessor, start):
@@ -63,6 +84,7 @@ class Graph:
         cycle.reverse()
         return cycle
 
+
 def input_type():
     print('1. API')
     print('2. Custom')
@@ -76,6 +98,7 @@ def input_type():
         print('Invalid choice. Try again.')
         return input_type()
 
+
 def fetch_exchange_rates(currencies):
     rates = {}
     try:
@@ -88,16 +111,19 @@ def fetch_exchange_rates(currencies):
         return None
 
     n = len(currencies)
-    matrix = [[0] * n for _ in range(n)]
+    matrix = [[Decimal(0)] * n for _ in range(n)]
 
     for i in range(n):
         for j in range(n):
             if i == j:
-                matrix[i][j] = 1.0
+                matrix[i][j] = Decimal(1.0)
             else:
-                matrix[i][j] = rates[currencies[i]].get(currencies[j], None)
+                rate = rates[currencies[i]].get(currencies[j], None)
+                if rate is not None:
+                    matrix[i][j] = Decimal(rate)
 
     return matrix
+
 
 def get_exchange_rates_from_input():
     currencies = [currency.strip().upper() for currency in input('Enter currencies (comma-separated): ').split(',')]
@@ -106,10 +132,11 @@ def get_exchange_rates_from_input():
 
     print('Enter exchange rates row by row (space-separated):')
     for _ in range(n):
-        row = list(map(float, input().split()))
+        row = list(map(Decimal, input().split()))
         matrix.append(row)
 
     return currencies, matrix
+
 
 def build_graph(currencies, matrix):
     n = len(currencies)
@@ -119,47 +146,62 @@ def build_graph(currencies, matrix):
         for j in range(n):
             if i != j:
                 rate = matrix[i][j]
-                weight = -math.log10(rate)
+                weight = -Decimal(math.log10(rate))
                 graph.add_edge(i, j, weight)
 
     return graph
 
+
 def find_arbitrage_or_best_rate(graph, currencies):
+    """
+    Detects arbitrage opportunities or finds the best conversion rates for all currency pairs.
+    """
     currencies = [currency.upper() for currency in currencies]
     arbitrage_exists, result = graph.bellman_ford(0)
+
     if arbitrage_exists:
-        print("Arbitrage detected! Currency sequence: " + " -> ".join(currencies[i] for i in result))
+        for cycle, gain in result:
+            print("Arbitrage detected! Currency sequence: " + " -> ".join(currencies[i] for i in cycle))
+            print(f"Potential gain from this arbitrage: {(gain - 1) * 100:.15f}%")
     else:
         print("No arbitrage opportunities found.")
-        source = input('Enter source currency: ').strip().upper()
-        target = input('Enter target currency: ').strip().upper()
-        if source in currencies and target in currencies:
-            find_best_conversion_rate(graph, currencies, source, target)
-        else:
-            print('Invalid currencies entered. Please try again.')
+        # Automatically find the best conversion rates for all pairs
+        find_best_conversion_rates(graph, currencies)
 
-def find_best_conversion_rate(graph, currencies, source, target):
-    source_index = currencies.index(source)
-    target_index = currencies.index(target)
-    _, (distances, predecessors) = graph.bellman_ford(source_index)
 
-    if distances[target_index] == float('inf'):
-        print(f"No conversion path found from {source} to {target}.")
-    else:
-        best_rate = math.pow(10, -distances[target_index])
-        path = get_path(predecessors, source_index, target_index)
-        print(f"Best conversion rate from {source} to {target}: {best_rate:.6f}")
-        print("Conversion path:", " -> ".join(currencies[i] for i in path))
+def find_best_conversion_rates(graph, currencies):
+    """
+    Finds and prints the best conversion rates for all currency pairs.
+    """
+    n = len(currencies)
+    # Loop through each currency as the source
+    for i in range(n):
+        source = currencies[i]
+        _, distances = graph.bellman_ford(i)
 
+        # For each source, loop through all other currencies as the target
+        for j in range(n):
+            if i != j:
+                target = currencies[j]
+                if distances[j] == Decimal('inf'):
+                    print(f"No conversion path found from {source} to {target}.")
+                else:
+                    best_rate = Decimal(10) ** -distances[j]
+                    path = get_path(distances, i, j)
+                    print(f"Best conversion rate from {source} to {target}: {best_rate:.15f}")
+                    print("Conversion path:", " -> ".join(currencies[k] for k in path))
+
+
+# have to fix get path
 def get_path(predecessor, start, end):
     path = []
     current = end
 
     while current != start:
+        if current is None:
+            return []  # Return an empty path if no path exists
         path.append(current)
         current = predecessor[current]
-        if current == -1:
-            return None  # Path not found
 
     path.append(start)
     path.reverse()
@@ -170,7 +212,8 @@ def main():
         input_choice = input_type()
 
         if input_choice == 'API':
-            currencies = [currency.strip().upper() for currency in input("Enter currencies (comma-separated): ").split(',')]
+            currencies = [currency.strip().upper() for currency in
+                          input("Enter currencies (comma-separated): ").split(',')]
             matrix = fetch_exchange_rates(currencies)
             if matrix is None:
                 print("Failed to fetch exchange rates. Exiting.")
@@ -189,6 +232,7 @@ def main():
         if replay.lower() != 'yes':
             print("Goodbye!")
             break
+
 
 if __name__ == '__main__':
     main()
