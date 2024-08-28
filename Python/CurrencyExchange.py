@@ -1,10 +1,18 @@
-from py_exchangeratesapi import Api
+import requests
 
-api = Api('32079035db98992849d78653cbdeadba')
+from_currency = str(
+    input("Enter in the currency you'd like to convert from: ")).upper()
 
-api.get_rates()
+to_currency = str(
+    input("Enter in the currency you'd like to convert to: ")).upper()
 
-print(api.get_rate(target='GBP'))
+amount = float(input("Enter in the amount of money: "))
+
+response = requests.get(
+    f"https://api.frankfurter.app/latest?amount={amount}&from={from_currency}&to={to_currency}")
+
+print(
+    f"{amount} {from_currency} is {response.json()['rates'][to_currency]} {to_currency}")
 
 class Edge:
     def __init__(self, start, destination, weight):
@@ -31,3 +39,5 @@ def inputType():
     else:
         print('Try again')
         return inputType()
+    
+    
