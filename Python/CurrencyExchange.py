@@ -32,7 +32,6 @@ class Graph:
                 return  # If a cycle is found, stop the function
         print("No Negative Cycle found")
 
-
         # Print distances
         self.print_distances(d)
 
@@ -40,8 +39,6 @@ class Graph:
         print("Vertex Distance from Source")
         for i in range(1, len(dist)):  # Start from 1
             print("{0}\t\t{1}".format(i, dist[i]))
-
-
 
 def input_type():
     print('1. API')
