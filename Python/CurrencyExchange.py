@@ -1,11 +1,3 @@
-#from py_exchangeratesapi import Api
-
-#api = Api('32079035db98992849d78653cbdeadba')
-
-#api.get_rates()
-
-#print(api.get_rate(target=3))
-
 class Graph:
     def __init__(self, no_vertices):
         self.no_vertices = no_vertices
@@ -19,7 +11,6 @@ class Graph:
         d = [float("Inf")] * (self.no_vertices + 1)  # starting from 1
         d[src] = 0
 
-        # Repeat |V| - 1 times
         for _ in range(self.no_vertices - 1):
             for start, destination, weight in self.edges:
                 if d[start] != float("Inf") and d[start] + weight < d[destination]:
@@ -55,35 +46,30 @@ def input_type():
         print('Try again')
         return input_type()
 
-# Hard coded arbitrage list
+# Hard coded arbitrage list with no negative cycle
 graph = Graph(5)
-
 graph.add_edge(1, 2, 0.85)
 graph.add_edge(1, 3, 0.75)
 graph.add_edge(1, 4, 110)
 graph.add_edge(1, 5, 1.35)
-
 graph.add_edge(2, 1, 1.18)
 graph.add_edge(2, 3, 0.88)
 graph.add_edge(2, 4, 129.53)
 graph.add_edge(2, 5, 1.59)
-
 graph.add_edge(3, 1, 1.33)
 graph.add_edge(3, 2, 1.14)
 graph.add_edge(3, 4, 147.05)
 graph.add_edge(3, 5, 1.81)
-
 graph.add_edge(4, 1, 0.0091)
 graph.add_edge(4, 2, 0.0077)
 graph.add_edge(4, 3, 0.0068)
 graph.add_edge(4, 5, 0.012)
-
 graph.add_edge(5, 1, 0.74)
 graph.add_edge(5, 2, 0.63)
 graph.add_edge(5, 3, 0.55)
 graph.add_edge(5, 4, 83.33)
 
-
+# Negative Cycle
 graph2 = Graph(6)
 graph2.add_edge(1, 2, 5)
 graph2.add_edge(2, 3, 1)
