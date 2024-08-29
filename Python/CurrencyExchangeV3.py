@@ -41,7 +41,7 @@ class Graph:
                     self.arbitrages.append(cycle)
                     found_cycles = True
 
-        return found_cycles, self.arbitrages
+        return found_cycles
 
 # Find where the negative cycle is
 def get_negative_cycle(predecessor, start):
