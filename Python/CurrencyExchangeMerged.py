@@ -9,10 +9,10 @@ class Edge:
         self.weight = weight
 
 class Graph:
-    def __init__(self, no_vertices, arbritages):
+    def __init__(self, no_vertices, arbitrages):
         self.no_vertices = no_vertices
         self.edges = []
-        self.abritages = []
+        self.arbitrages = []
 
     # Add edge
     def add_edge(self, start, destination, weight):
@@ -43,29 +43,29 @@ class Graph:
 
         return found_cycles, self.arbritages
 
-        # Find where the negative cycle is
-        def get_negative_cycle(predecessor, start):
-            cycle = [] # The nodes that are in the negative cycle
-            visited = set() # Keep track of visited Node
-            node = start # Set the current node to the start
+    # Find where the negative cycle is
+    def get_negative_cycle(predecessor, start):
+        cycle = [] # The nodes that are in the negative cycle
+        visited = set() # Keep track of visited Node
+        node = start # Set the current node to the start
 
-            # Trace the node backwards through the predecessor array
-            while node not in visited: # Loops until all nodes are visited
-                visited.add(node) # Add the node to visited Node
-                node = predecessor[node] # Move to the predecessor of the current node
+        # Trace the node backwards through the predecessor array
+        while node not in visited: # Loops until all nodes are visited
+            visited.add(node) # Add the node to visited Node
+            node = predecessor[node] # Move to the predecessor of the current node
 
-            cycle_start = node # The first node that was revisited
-            cycle.append(cycle_start) # Add the first node to the cycle
-            node = predecessor[cycle_start] # Move to the predecessor of the cycle start
+        cycle_start = node # The first node that was revisited
+        cycle.append(cycle_start) # Add the first node to the cycle
+        node = predecessor[cycle_start] # Move to the predecessor of the cycle start
 
-            # Adds all the nodes to the cycle
-            while node != cycle_start: # While the cycle is incomplete
-                cycle.append(node)  # Add to cycle
-                node = predecessor[node] # go to predecessor
+        # Adds all the nodes to the cycle
+        while node != cycle_start: # While the cycle is incomplete
+            cycle.append(node)  # Add to cycle
+            node = predecessor[node] # go to predecessor
 
-            cycle.append(cycle_start) # Complete the cycle
-            cycle.reverse() # Since the cycle is backwards, reverse it
-            return cycle
+        cycle.append(cycle_start) # Complete the cycle
+        cycle.reverse() # Since the cycle is backwards, reverse it
+        return cycle
 
 # API
 def fetch_exchange_rates(currencies):
