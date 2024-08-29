@@ -174,8 +174,11 @@ def main():
 
     print('Detecting arbitrage opportunities...')
     find_arbitrage(graph, currencies) # Run arbitrage program
+    
+    input = input('Would you like to continue? Y/N')
 
-    main()
+    if input == 'Y':
+        main()
 
 if __name__ == '__main__':
     main()
