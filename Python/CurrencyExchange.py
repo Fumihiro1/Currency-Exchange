@@ -5,11 +5,13 @@ from decimal import Decimal, getcontext
 # Set precision for Decimal operations
 getcontext().prec = 50
 
+
 class Edge:
     def __init__(self, start, destination, weight):
         self.start = start
         self.destination = destination
         self.weight = weight
+
 
 class Graph:
     def __init__(self, no_vertices):
@@ -27,7 +29,8 @@ class Graph:
 
         for _ in range(self.noVertices - 1):
             for edge in self.edges:
-                if distance[edge.start] != Decimal('inf') and distance[edge.start] + edge.weight < distance[edge.destination]:
+                if distance[edge.start] != Decimal('inf') and distance[edge.start] + edge.weight < distance[
+                    edge.destination]:
                     distance[edge.destination] = distance[edge.start] + edge.weight
                     predecessor[edge.destination] = edge.start
 
@@ -59,7 +62,7 @@ class Graph:
         if arbitrages:
             return True, arbitrages
         else:
-            return False, distance
+            return False, (distance, predecessor)
 
     @staticmethod
     def get_negative_cycle(predecessor, start):
@@ -166,18 +169,19 @@ def find_arbitrage_or_best_rate(graph, currencies):
     else:
         print("No arbitrage opportunities found.")
         # Automatically find the best conversion rates for all pairs
-        find_best_conversion_rates(graph, currencies)
+        find_best_conversion_rates(graph, currencies, result)
 
 
-def find_best_conversion_rates(graph, currencies):
+def find_best_conversion_rates(graph, currencies, bellman_ford_result):
     """
     Finds and prints the best conversion rates for all currency pairs.
     """
+    distances, predecessors = bellman_ford_result
     n = len(currencies)
+
     # Loop through each currency as the source
     for i in range(n):
         source = currencies[i]
-        _, distances = graph.bellman_ford(i)
 
         # For each source, loop through all other currencies as the target
         for j in range(n):
@@ -187,22 +191,29 @@ def find_best_conversion_rates(graph, currencies):
                     print(f"No conversion path found from {source} to {target}.")
                 else:
                     best_rate = Decimal(10) ** -distances[j]
-                    path = get_path(distances, i, j)
+                    path = get_path(predecessors, i, j)
                     print(f"Best conversion rate from {source} to {target}: {best_rate:.15f}")
                     print("Conversion path:", " -> ".join(currencies[k] for k in path))
 
 
-# have to fix get path
 def get_path(predecessor, start, end):
+    """
+    Reconstructs the path from `start` to `end` using the `predecessor` array.
+    """
     path = []
     current = end
 
+    # Avoid infinite loops by keeping track of visited nodes
+    visited = set()
+
     while current != start:
-        if current is None:
-            return []  # Return an empty path if no path exists
+        if current == -1 or current in visited:  # No path exists or a cycle detected
+            return []
+        visited.add(current)
         path.append(current)
         current = predecessor[current]
 
+    # Append the start node and reverse the path
     path.append(start)
     path.reverse()
     return path
