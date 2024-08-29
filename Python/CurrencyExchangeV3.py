@@ -9,9 +9,10 @@ class Edge:
         self.weight = weight
 
 class Graph:
-    def __init__(self, no_vertices):
+    def __init__(self, currency_names):
+        self.no_vertices = len(currency_names)
+        self.currency_names = currency_names
         self.arbitrage = None
-        self.no_vertices = no_vertices
         self.edges = []
 
     # Add edge
@@ -91,11 +92,11 @@ def get_exchange_rates_from_input():
 
 # Create a graph from a matrix and list of currencies
 def build_graph(currencies, matrix):
-    # Get the number of currencies and create a graph
-    n = len(currencies)
-    graph = Graph(n)
+    # Create a graph
+    graph = Graph(currencies)
 
     # Fill the graph with the matrix values
+    n = len(currencies)
     for i in range(n):
         for j in range(n):
             if i != j:
@@ -109,7 +110,7 @@ def build_graph(currencies, matrix):
 def find_arbitrage(graph, currencies):
     arbitrage_exists = graph.bellman_ford(0)
     if arbitrage_exists:
-        print("Arbitrage detected! Currency sequence: " + ' <- '.join(str(x) for x in graph.arbitrage))
+        print("Arbitrage detected! Currency sequence: " + ' -> '.join(currencies[x] for x in graph.arbitrage))
     else:
         print("No arbitrage opportunities found.")
 
