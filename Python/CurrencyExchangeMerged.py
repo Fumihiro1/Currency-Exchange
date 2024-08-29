@@ -9,9 +9,10 @@ class Edge:
         self.weight = weight
 
 class Graph:
-    def __init__(self, no_vertices):
+    def __init__(self, no_vertices, arbritages):
         self.no_vertices = no_vertices
         self.edges = []
+        self.abritages = []
 
     # Add edge
     def add_edge(self, start, destination, weight):
@@ -30,11 +31,17 @@ class Graph:
                     distance[edge.destination] = distance[edge.start] + edge.weight # Update the shortest path found
                     predecessor[edge.destination] = edge.start
 
-        # After n-1 iterations, if you can still find a shorter path, there is a negative cycle
-        for edge in self.edges: # For each edge
-            if distance[edge.start] + edge.weight < distance[edge.destination]: # If there is a shorter path
-                # Return that there is a negative cycle, and where the cycle is
-                return True, self.get_negative_cycle(predecessor, edge.destination)
+        # Check for negative cycles after n-1 iterations
+        found_cycles = False
+        for edge in self.edges:  # For each edge
+            if distance[edge.start] + edge.weight < distance[edge.destination]:  # If there is a shorter path
+                # Add the negative cycle to the list of arbitrages
+                cycle = self.get_negative_cycle(predecessor, edge.destination)
+                if cycle not in self.arbritages:  # To avoid duplicates
+                    self.arbritages.append(cycle)
+                    found_cycles = True
+
+        return found_cycles, self.arbritages
 
         # Find where the negative cycle is
         def get_negative_cycle(predecessor, start):
