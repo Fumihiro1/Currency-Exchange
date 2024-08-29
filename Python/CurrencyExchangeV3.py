@@ -10,9 +10,9 @@ class Edge:
 
 class Graph:
     def __init__(self, no_vertices):
+        self.arbitrage = None
         self.no_vertices = no_vertices
         self.edges = []
-        self.arbitrages = []
 
     # Add edge
     def add_edge(self, start, destination, weight):
@@ -32,16 +32,12 @@ class Graph:
                     predecessor[edge.destination] = edge.start
 
         # Check for negative cycles after n-1 iterations
-        found_cycles = False
         for edge in self.edges:  # For each edge
             if distance[edge.start] + edge.weight < distance[edge.destination]:  # If there is a shorter path
                 # Add the negative cycle to the list of arbitrages
                 cycle = get_negative_cycle(predecessor, edge.destination)
-                if cycle not in self.arbitrages:  # To avoid duplicates
-                    self.arbitrages.append(cycle)
-                    found_cycles = True
-
-        return found_cycles
+                self.arbitrage = cycle
+                return True
 
 # Find where the negative cycle is
 def get_negative_cycle(predecessor, start):
@@ -113,11 +109,7 @@ def build_graph(currencies, matrix):
 def find_arbitrage(graph, currencies):
     arbitrage_exists = graph.bellman_ford(0)
     if arbitrage_exists:
-        arbitrage_string = ''
-        for arbitrage in graph.arbitrages:
-            arbitrage_string += ' -> '.join(str(item) for item in arbitrage)
-            arbitrage_string += '\n'
-        print("Arbitrage detected! Currency sequence: " + arbitrage_string)
+        print("Arbitrage detected! Currency sequence: " + ' <- '.join(str(x) for x in graph.arbitrage))
     else:
         print("No arbitrage opportunities found.")
 
@@ -126,7 +118,8 @@ def input_type():
     print('input type?')
     print('1. API')
     print('2. Custom')
-    choice = input('Choose input type (1 or 2): ')
+    print('3. Demo')
+    choice = input('Choose input type (1, 2 or 3): ')
 
     # Return the appropriate string
     if choice == '1':
@@ -135,9 +128,27 @@ def input_type():
     elif choice == '2':
         print('Custom chosen')
         return 'Custom'
+    elif choice == '3':
+        print('Demo Chosen')
+        return 'Demo'
     else:
         print('Invalid choice. Try again.')
         return input_type()
+
+def build_demo_graph():
+    graph = Graph(6)
+
+    # Add edges to the graph
+    graph.add_edge(0, 1, -1)
+    graph.add_edge(1, 2, -1)
+    graph.add_edge(2, 3, -1)
+    graph.add_edge(3, 1, -1)  # Negative cycle 1: 0 -> 1 -> 2 -> 3 -> 1
+    graph.add_edge(1, 4, 2)
+    graph.add_edge(4, 5, -1)
+    graph.add_edge(5, 4, -1)  # Negative cycle 2: 4 -> 5 -> 4
+
+    return graph
+
 
 def main():
     # Get input choice
@@ -152,10 +163,13 @@ def main():
         print("Exchange Rate Matrix:")
         for row in matrix:
             print(" ".join(f"{rate:.4f}" for rate in row))
-    else:
+        graph = build_graph(currencies, matrix)  # Build graph
+    elif input_choice == 'Custom':
         currencies, matrix = get_exchange_rates_from_input()
-
-    graph = build_graph(currencies, matrix) # Build graph
+        graph = build_graph(currencies, matrix)  # Build graph
+    else:
+        graph = build_demo_graph()
+        currencies = ['USD','NZD','DNR','HER','ABC', 'ADS']
 
     print('Detecting arbitrage opportunities...')
     find_arbitrage(graph, currencies) # Run arbitrage program
