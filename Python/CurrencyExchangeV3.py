@@ -9,7 +9,7 @@ class Edge:
         self.weight = weight
 
 class Graph:
-    def __init__(self, no_vertices, arbitrages):
+    def __init__(self, no_vertices):
         self.no_vertices = no_vertices
         self.edges = []
         self.arbitrage = []
@@ -43,29 +43,55 @@ class Graph:
 
         return found_cycles, self.arbitrages
 
-    # Find where the negative cycle is
-    def get_negative_cycle(self, predecessor, start):
-        cycle = [] # The nodes that are in the negative cycle
-        visited = set() # Keep track of visited Node
-        node = start # Set the current node to the start
+# Find where the negative cycle is
+def get_negative_cycle(predecessor, start):
+    cycle = [] # The nodes that are in the negative cycle
+    visited = set() # Keep track of visited Node
+    node = start # Set the current node to the start
 
-        # Trace the node backwards through the predecessor array
-        while node not in visited: # Loops until all nodes are visited
-            visited.add(node) # Add the node to visited Node
-            node = predecessor[node] # Move to the predecessor of the current node
+    # Trace the node backwards through the predecessor array
+    while node not in visited: # Loops until all nodes are visited
+        visited.add(node) # Add the node to visited Node
+        node = predecessor[node] # Move to the predecessor of the current node
 
-        cycle_start = node # The first node that was revisited
-        cycle.append(cycle_start) # Add the first node to the cycle
-        node = predecessor[cycle_start] # Move to the predecessor of the cycle start
+    cycle_start = node # The first node that was revisited
+    cycle.append(cycle_start) # Add the first node to the cycle
+    node = predecessor[cycle_start] # Move to the predecessor of the cycle start
 
-        # Adds all the nodes to the cycle
-        while node != cycle_start: # While the cycle is incomplete
-            cycle.append(node)  # Add to cycle
-            node = predecessor[node] # go to predecessor
+    # Adds all the nodes to the cycle
+    while node != cycle_start: # While the cycle is incomplete
+        cycle.append(node)  # Add to cycle
+        node = predecessor[node] # go to predecessor
 
-        cycle.append(cycle_start) # Complete the cycle
-        cycle.reverse() # Since the cycle is backwards, reverse it
-        return cycle
+    cycle.append(cycle_start) # Complete the cycle
+    cycle.reverse() # Since the cycle is backwards, reverse it
+    return cycle
+
+# API
+def fetch_exchange_rates(currencies):
+    # Fetch the latest exchange rates for the specified currencies using get
+    response = requests.get(f"https://api.exchangerate-api.com/v4/latest/USD")
+    rates = response.json().get('rates', {}) # Returns the rates, or an empty dictionary if the rates field is missing
+
+    # Creates and returns a matrix of the currency rates from the requested currencies
+    matrix = [[1 if i == j else rates[currencies[j]] / rates[currencies[i]] for j in range(len(currencies))] for i in range(len(currencies))]
+    return matrix
+
+# Get exchange rates from user input
+def get_exchange_rates_from_input():
+    # Prompt the user for requested currencies
+    currencies = input('Enter currencies (comma-separated)').split(',')
+    n = len(currencies) # Number of currencies for 'n'
+
+    # Prompt the user for the exchange rates
+    matrix = []
+    print('Enter exchange rates row by row (space-separated):')
+    for _ in range(n):
+        row = list(map(float, input().split()))
+        matrix.append(row)
+
+    # return the list of currencies, and the currency list
+    return currencies, matrix
 
 # Create a graph from a matrix and list of currencies
 def build_graph(currencies, matrix):
@@ -93,11 +119,10 @@ def find_arbitrage(graph, currencies):
 
 # Get the input type
 def input_type():
-    print('Input type?')
+    print('input type?')
     print('1. API')
     print('2. Custom')
-    print('3. Run Test Cases')
-    choice = input('Choose input type (1, 2 or 3): ')
+    choice = input('Choose input type (1 or 2): ')
 
     # Return the appropriate string
     if choice == '1':
@@ -106,8 +131,6 @@ def input_type():
     elif choice == '2':
         print('Custom chosen')
         return 'Custom'
-    elif choice == '3':
-        print('Test cases chosen')
     else:
         print('Invalid choice. Try again.')
         return input_type()
@@ -115,6 +138,24 @@ def input_type():
 def main():
     # Get input choice
     input_choice = input_type()
+
+    # Get currencies and matrix dependent on the chosen input
+    if input_choice == 'API':
+        currencies = [currency.strip() for currency in input("Enter currencies (comma-separated): ").split(',')]
+        matrix = fetch_exchange_rates(currencies)
+
+        # Print the exchange rate matrix
+        print("Exchange Rate Matrix:")
+        for row in matrix:
+            print(" ".join(f"{rate:.4f}" for rate in row))
+    else:
+        currencies, matrix = get_exchange_rates_from_input()
+
+    graph = build_graph(currencies, matrix) # Build graph
+
+    print('Detecting arbitrage opportunities...')
+    find_arbitrage(graph, currencies) # Run arbitrage program
+
     main()
 
 if __name__ == '__main__':
