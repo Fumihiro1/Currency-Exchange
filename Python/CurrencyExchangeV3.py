@@ -12,7 +12,7 @@ class Graph:
     def __init__(self, no_vertices):
         self.no_vertices = no_vertices
         self.edges = []
-        self.arbitrage = []
+        self.arbitrages = []
 
     # Add edge
     def add_edge(self, start, destination, weight):
@@ -36,7 +36,7 @@ class Graph:
         for edge in self.edges:  # For each edge
             if distance[edge.start] + edge.weight < distance[edge.destination]:  # If there is a shorter path
                 # Add the negative cycle to the list of arbitrages
-                cycle = self.get_negative_cycle(predecessor, edge.destination)
+                cycle = get_negative_cycle(predecessor, edge.destination)
                 if cycle not in self.arbitrages:  # To avoid duplicates
                     self.arbitrages.append(cycle)
                     found_cycles = True
@@ -111,9 +111,13 @@ def build_graph(currencies, matrix):
 
 # Runs the arbitrage program
 def find_arbitrage(graph, currencies):
-    arbitrage_exists, result = graph.bellman_ford(0)
+    arbitrage_exists = graph.bellman_ford(0)
     if arbitrage_exists:
-        print("Arbitrage detected! Currency sequence: " + " -> ".join(currencies[i] for i in result))
+        arbitrage_string = ''
+        for arbitrage in graph.arbitrages:
+            arbitrage_string += ' -> '.join(str(item) for item in arbitrage)
+            arbitrage_string += '\n'
+        print("Arbitrage detected! Currency sequence: " + arbitrage_string)
     else:
         print("No arbitrage opportunities found.")
 
