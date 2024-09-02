@@ -81,12 +81,21 @@ def bellman_ford_arbitrage(edges, rates):
         # If there is an arbitrage, trace the path using predecessors
         cycle = []
         visited = set()
-        while cycle_start not in visited:
-            visited.add(cycle_start) # mark the node as visited
-            cycle.append(cycle_start) # add node to cycle
-            cycle_start = predecessor[cycle_start] # move to the predecessor
+        current = cycle_start
 
-        cycle.append(cycle_start) # close the cycle by adding the start node again
+        # Find the cycle starting point
+        for _ in range(len(distance)):
+            current = predecessor[current]
+
+        cycle_start = current
+
+        # Trace back to find the complete cycle
+        while True:
+            cycle.append(current)
+            current = predecessor[current]
+            if current == cycle_start:
+                cycle.append(current)
+                break
         cycle.reverse() # reverse to get the correct order of the cycle
 
         # Calculate the gain product
@@ -94,22 +103,27 @@ def bellman_ford_arbitrage(edges, rates):
         for i in range(len(cycle) - 1):
             from_currency = cycle[i]
             to_currency = cycle[i + 1]
-            rate = rates[from_currency].get(to_currency, 'N/A')
+            rate = rates[from_currency].get(to_currency, 'N/A') # get the rate from one currency to the next
             if rate != 'N/A':
-                gain_product *= float(rate)
-
-        # Include the final conversion rate to complete the cycle
-        final_conversion_rate = rates[cycle[-1]].get(cycle[0], 'N/A')
-        if final_conversion_rate != 'N/A':
-            gain_product *= float(final_conversion_rate)
+                gain_product *= float(rate) # multiply to accumulate the gain
 
         # Print the arbitrage opportunity and percentage gain
         path = ' -> '.join(cycle)
-        print(f"Arbitrage opportunity found: {path} -> {cycle[0]}")
+        print(f"Arbitrage opportunity found: {path}")
         print(f"Potential gain: {(gain_product - 1) * 100:.2f}%")
     else:
         print("No arbitrage opportunity detected.")
 
+# Sample rates without arbitrage
+rates = {
+    "EUR": {"JPY": 130, "USD": 1.1, "NZD": 1.6},
+    "JPY": {"EUR": 0.0077, "USD": 0.0084, "NZD": 0.012},
+    "USD": {"EUR": 0.9, "JPY": 108, "NZD": 1.45},
+    "NZD": {"EUR": 0.625, "JPY": 83, "USD": 0.69}
+}
+
+edges = create_graph_from_rates(rates)
+bellman_ford_arbitrage(edges, rates)
 
 # Initialize Tkinter window
 root = tk.Tk()
