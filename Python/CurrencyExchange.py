@@ -1,107 +1,9 @@
-import math
+import tkinter as tk
+from tkinter import messagebox, ttk
 import requests
-from decimal import Decimal, getcontext
+import numpy as np
 
-# Set precision for Decimal operations
-getcontext().prec = 50
-
-
-class Edge:
-    def __init__(self, start, destination, weight):
-        self.start = start
-        self.destination = destination
-        self.weight = weight
-
-
-class Graph:
-    def __init__(self, no_vertices):
-        self.noVertices = no_vertices
-        self.edges = []
-
-    def add_edge(self, start, destination, weight):
-        self.edges.append(Edge(start, destination, weight))
-
-    def bellman_ford(self, source, tolerance=Decimal('1e-15')):
-        # Initialize distances and predecessors
-        distance = [Decimal('inf')] * self.noVertices
-        predecessor = [-1] * self.noVertices
-        distance[source] = Decimal('0')
-
-        for _ in range(self.noVertices - 1):
-            for edge in self.edges:
-                if distance[edge.start] != Decimal('inf') and distance[edge.start] + edge.weight < distance[
-                    edge.destination]:
-                    distance[edge.destination] = distance[edge.start] + edge.weight
-                    predecessor[edge.destination] = edge.start
-
-        # Check for negative weight cycles and find all arbitrages
-        arbitrages = []
-        seen_cycles = set()  # Set to store unique cycles
-
-        for edge in self.edges:
-            if distance[edge.start] + edge.weight < distance[edge.destination]:
-                cycle = self.get_negative_cycle(predecessor, edge.destination)
-
-                # Normalize cycle by sorting to avoid duplicates
-                normalized_cycle = tuple(sorted(cycle))
-
-                # Check if we already found this cycle
-                if normalized_cycle not in seen_cycles:
-                    seen_cycles.add(normalized_cycle)
-                    cycle_product = Decimal('1.0')
-                    for i in range(len(cycle) - 1):
-                        start_currency = cycle[i]
-                        next_currency = cycle[i + 1]
-                        for e in self.edges:
-                            if e.start == start_currency and e.destination == next_currency:
-                                cycle_product *= Decimal(10) ** (-e.weight)
-                                break
-                    if cycle_product > 1 + tolerance:
-                        arbitrages.append((cycle, cycle_product))
-
-        if arbitrages:
-            return True, arbitrages
-        else:
-            return False, (distance, predecessor)
-
-    @staticmethod
-    def get_negative_cycle(predecessor, start):
-        # Find negative cycle using predecessor array
-        cycle = []
-        visited = set()
-        node = start
-
-        while node not in visited:
-            visited.add(node)
-            node = predecessor[node]
-
-        cycle_start = node
-        cycle.append(cycle_start)
-        node = predecessor[cycle_start]
-
-        while node != cycle_start:
-            cycle.append(node)
-            node = predecessor[node]
-
-        cycle.append(cycle_start)
-        cycle.reverse()
-        return cycle
-
-
-def input_type():
-    print('1. API')
-    print('2. Custom')
-    choice = input('Choose input type (1 or 2): ')
-
-    if choice == '1':
-        return 'API'
-    elif choice == '2':
-        return 'Custom'
-    else:
-        print('Invalid choice. Try again.')
-        return input_type()
-
-
+# Function to fetch exchange rates from the API
 def fetch_exchange_rates(currencies):
     rates = {}
     try:
@@ -112,138 +14,155 @@ def fetch_exchange_rates(currencies):
     except requests.exceptions.RequestException as e:
         print(f"Error fetching exchange rates: {e}")
         return None
+    return rates
 
-    n = len(currencies)
-    matrix = [[Decimal(0)] * n for _ in range(n)]
+# Function to update the matrix view with fetched exchange rates
+def update_matrix_view(event=None):
+    selected_currencies = [currency1.get(), currency2.get(), currency3.get(), currency4.get(), currency5.get()]
+    if len(set(selected_currencies)) < len(selected_currencies):
+        messagebox.showerror("Duplicate Currency", "Please select different currencies for each dropdown.")
+        return
 
-    for i in range(n):
-        for j in range(n):
-            if i == j:
-                matrix[i][j] = Decimal(1.0)
-            else:
-                rate = rates[currencies[i]].get(currencies[j], None)
-                if rate is not None:
-                    matrix[i][j] = Decimal(rate)
+    rates = fetch_exchange_rates(selected_currencies)
 
-    return matrix
-
-
-def get_exchange_rates_from_input():
-    currencies = [currency.strip().upper() for currency in input('Enter currencies (comma-separated): ').split(',')]
-    n = len(currencies)
-    matrix = []
-
-    print('Enter exchange rates row by row (space-separated):')
-    for _ in range(n):
-        row = list(map(Decimal, input().split()))
-        matrix.append(row)
-
-    return currencies, matrix
-
-
-def build_graph(currencies, matrix):
-    n = len(currencies)
-    graph = Graph(n)
-
-    for i in range(n):
-        for j in range(n):
-            if i != j:
-                rate = matrix[i][j]
-                weight = -Decimal(math.log10(rate))
-                graph.add_edge(i, j, weight)
-
-    return graph
-
-
-def find_arbitrage_or_best_rate(graph, currencies):
-    """
-    Detects arbitrage opportunities or finds the best conversion rates for all currency pairs.
-    """
-    currencies = [currency.upper() for currency in currencies]
-    arbitrage_exists, result = graph.bellman_ford(0)
-
-    if arbitrage_exists:
-        for cycle, gain in result:
-            print("Arbitrage detected! Currency sequence: " + " -> ".join(currencies[i] for i in cycle))
-            print(f"Potential gain from this arbitrage: {(gain - 1) * 100:.15f}%")
-    else:
-        print("No arbitrage opportunities found.")
-        # Automatically find the best conversion rates for all pairs
-        find_best_conversion_rates(graph, currencies, result)
-
-
-def find_best_conversion_rates(graph, currencies, bellman_ford_result):
-    """
-    Finds and prints the best conversion rates for all currency pairs.
-    """
-    distances, predecessors = bellman_ford_result
-    n = len(currencies)
-
-    # Loop through each currency as the source
-    for i in range(n):
-        source = currencies[i]
-
-        # For each source, loop through all other currencies as the target
-        for j in range(n):
-            if i != j:
-                target = currencies[j]
-                if distances[j] == Decimal('inf'):
-                    print(f"No conversion path found from {source} to {target}.")
+    if rates:
+        for i, currency in enumerate(selected_currencies):
+            conversion_rates[0][i + 1].config(text=currency)
+            conversion_rates[i + 1][0].config(text=currency)
+            for j, rate_currency in enumerate(selected_currencies):
+                if i == j:
+                    conversion_rates[i + 1][j + 1].config(text="1.000")
                 else:
-                    best_rate = Decimal(10) ** -distances[j]
-                    path = get_path(predecessors, i, j)
-                    print(f"Best conversion rate from {source} to {target}: {best_rate:.15f}")
-                    print("Conversion path:", " -> ".join(currencies[k] for k in path))
+                    rate = rates[currency].get(rate_currency, 'N/A')
+                    conversion_rates[i + 1][j + 1].config(text=f"{rate:.3f}" if rate != 'N/A' else 'N/A')
 
+        # Detect arbitrage
+        edges = create_graph_from_rates(rates)
+        bellman_ford_arbitrage(edges, rates)
 
-def get_path(predecessor, start, end):
-    """
-    Reconstructs the path from `start` to `end` using the `predecessor` array.
-    """
-    path = []
-    current = end
+def create_graph_from_rates(rates):
+    edges = []
+    for from_currency in rates:
+        for to_currency in rates:
+            if from_currency != to_currency:
+                rate = rates[from_currency].get(to_currency, 'N/A')
+                if rate != 'N/A':
+                    # Create edge with weight as negative log of rate
+                    edges.append((from_currency, to_currency, -np.log10(float(rate))))
+    return edges
 
-    # Avoid infinite loops by keeping track of visited nodes
-    visited = set()
+def bellman_ford_arbitrage(edges, rates):
+    # Initialize distances and predecessors
+    distance = {node: float('inf') for node in set([u for u, _, _ in edges] + [v for _, v, _ in edges])} # initialise all distances to infinity except for start node
+    predecessor = {node: None for node in distance} # initialise predecessor dictionary to keep track of path
+    start_node = list(distance.keys())[0] # Choose first node as start node
+    distance[start_node] = 0 # Distance from start node to itself is 0
 
-    while current != start:
-        if current == -1 or current in visited:  # No path exists or a cycle detected
-            return []
-        visited.add(current)
-        path.append(current)
-        current = predecessor[current]
+    # Relax all edges |V| - 1 times
+    for _ in range(len(distance) - 1):
+        for u, v, w in edges:
+            # relax the edge (u,v) if a shorter path is found
+            if distance[u] + w < distance[v]:
+                distance[v] = distance[u] + w
+                predecessor[v] = u # Update the predecessor of v to be equal to u
 
-    # Append the start node and reverse the path
-    path.append(start)
-    path.reverse()
-    return path
+    # Check for negative weight cycles to detect arbitrage opportunities
+    arbitrage_found = False
+    cycle_start = None
 
-def main():
-    while True:
-        input_choice = input_type()
-
-        if input_choice == 'API':
-            currencies = [currency.strip().upper() for currency in
-                          input("Enter currencies (comma-separated): ").split(',')]
-            matrix = fetch_exchange_rates(currencies)
-            if matrix is None:
-                print("Failed to fetch exchange rates. Exiting.")
-                continue
-
-            print("Exchange Rate Matrix:")
-            for row in matrix:
-                print(" ".join(f"{rate:.4f}" if rate is not None else "None" for rate in row))
-        else:
-            currencies, matrix = get_exchange_rates_from_input()
-
-        graph = build_graph(currencies, matrix)
-        find_arbitrage_or_best_rate(graph, currencies)
-
-        replay = input('Do you want to try again? (yes or no): ')
-        if replay.lower() != 'yes':
-            print("Goodbye!")
+    # loop again, if shorter path is still found then negative weight cycle is present
+    for u, v, w in edges:
+        if distance[u] + w < distance[v]:
+            arbitrage_found = True
+            cycle_start = v # start of cycle
             break
 
+    if arbitrage_found:
+        # If there is an arbitrage, trace the path using predecessors
+        cycle = []
+        visited = set()
+        while cycle_start not in visited:
+            visited.add(cycle_start) # mark the node as visited
+            cycle.append(cycle_start) # add node to cycle
+            cycle_start = predecessor[cycle_start] # move to the predecessor
 
-if __name__ == '__main__':
-    main()
+        cycle.append(cycle_start) # close the cycle by adding the start node again
+        cycle.reverse() # reverse to get the correct order of the cycle
+
+        # Calculate the gain product
+        gain_product = 1.0
+        for i in range(len(cycle) - 1):
+            from_currency = cycle[i]
+            to_currency = cycle[i + 1]
+            rate = rates[from_currency].get(to_currency, 'N/A')
+            if rate != 'N/A':
+                gain_product *= float(rate)
+
+        # Include the final conversion rate to complete the cycle
+        final_conversion_rate = rates[cycle[-1]].get(cycle[0], 'N/A')
+        if final_conversion_rate != 'N/A':
+            gain_product *= float(final_conversion_rate)
+
+        # Print the arbitrage opportunity and percentage gain
+        path = ' -> '.join(cycle)
+        print(f"Arbitrage opportunity found: {path} -> {cycle[0]}")
+        print(f"Potential gain: {(gain_product - 1) * 100:.2f}%")
+    else:
+        print("No arbitrage opportunity detected.")
+
+
+# Initialize Tkinter window
+root = tk.Tk()
+root.geometry('1000x500')
+root.title("Currency Exchange")
+
+# Define available currencies
+available_currencies = ['USD', 'NZD', 'AUD', 'EUR', 'JPY', 'THB', 'INR', 'BOB', 'BRL']
+
+# Create dropdown selectors for currencies
+currency1 = tk.StringVar(value=available_currencies[0]) # set to first 5 available currencies
+currency2 = tk.StringVar(value=available_currencies[1])
+currency3 = tk.StringVar(value=available_currencies[2])
+currency4 = tk.StringVar(value=available_currencies[3])
+currency5 = tk.StringVar(value=available_currencies[4])
+
+currency_selectors = [
+    ttk.Combobox(root, textvariable=currency1, values=available_currencies),
+    ttk.Combobox(root, textvariable=currency2, values=available_currencies),
+    ttk.Combobox(root, textvariable=currency3, values=available_currencies),
+    ttk.Combobox(root, textvariable=currency4, values=available_currencies),
+    ttk.Combobox(root, textvariable=currency5, values=available_currencies)
+]
+
+# Function to handle currency selection changes
+def on_currency_select(event):
+    update_matrix_view()
+
+# Place currency selectors in a vertical column on the left side
+for i, selector in enumerate(currency_selectors):
+    selector.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+    selector.bind("<<ComboboxSelected>>", on_currency_select)
+
+# Matrix to display conversion rates
+conversion_rates = [[None for _ in range(6)] for _ in range(6)]
+
+# Setup headers and initialize matrix cells
+conversion_rates[0][0] = tk.Label(root, text="From/To", borderwidth=1, relief="solid", width=15)
+conversion_rates[0][0].grid(row=0, column=1, sticky="nsew")
+
+for i in range(5):
+    conversion_rates[0][i+1] = tk.Label(root, text="N/A", borderwidth=1, relief="solid", width=15)
+    conversion_rates[0][i+1].grid(row=0, column=i+2, sticky="nsew")  # Top row headers
+
+    conversion_rates[i+1][0] = tk.Label(root, text="N/A", borderwidth=1, relief="solid", width=15)
+    conversion_rates[i+1][0].grid(row=i+1, column=1, sticky="nsew")  # Left column headers
+
+    for j in range(5):
+        conversion_rates[i+1][j+1] = tk.Label(root, text="N/A", borderwidth=1, relief="solid", width=15)
+        conversion_rates[i+1][j+1].grid(row=i+1, column=j+2, sticky="nsew")  # Conversion rates
+
+# Initialize the matrix view with default values
+update_matrix_view()
+
+# Run the Tkinter main loop
+root.mainloop()
