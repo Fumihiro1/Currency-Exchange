@@ -114,17 +114,6 @@ def bellman_ford_arbitrage(edges, rates):
     else:
         print("No arbitrage opportunity detected.")
 
-# Sample rates without arbitrage
-rates = {
-    "EUR": {"JPY": 130, "USD": 1.1, "NZD": 1.6},
-    "JPY": {"EUR": 0.0077, "USD": 0.0084, "NZD": 0.012},
-    "USD": {"EUR": 0.9, "JPY": 108, "NZD": 1.45},
-    "NZD": {"EUR": 0.625, "JPY": 83, "USD": 0.69}
-}
-
-edges = create_graph_from_rates(rates)
-bellman_ford_arbitrage(edges, rates)
-
 # Initialize Tkinter window
 root = tk.Tk()
 root.geometry('1000x500')
@@ -132,6 +121,25 @@ root.title("Currency Exchange")
 
 # Define available currencies
 available_currencies = ['USD', 'NZD', 'AUD', 'EUR', 'JPY', 'THB', 'INR', 'BOB', 'BRL']
+
+# Create frames
+top_left_frame = tk.Frame(root)
+top_right_frame = tk.Frame(root)
+bottom_left_frame = tk.Frame(root)
+bottom_right_frame = tk.Frame(root)
+
+# Place frames in a grid with padding
+top_left_frame.grid(row=0, column=0, padx=40, pady=10, sticky="nw")
+top_right_frame.grid(row=0, column=1, padx=40, pady=10, sticky="ne")
+bottom_left_frame.grid(row=1, column=0, padx=40, pady=10, sticky="sw")
+bottom_right_frame.grid(row=1, column=1, padx=40, pady=10, sticky="se")
+
+# add color to frames
+bottom_left_frame.config(background="white")
+
+# Create the title for dropdown selectors
+dropdown_title = tk.Label(top_left_frame, text="Currencies", font=('Arial', 12, 'bold'))
+dropdown_title.grid(row=0, column=0, padx=5, pady=5, sticky="n")
 
 # Create dropdown selectors for currencies
 currency1 = tk.StringVar(value=available_currencies[0]) # set to first 5 available currencies
@@ -141,11 +149,11 @@ currency4 = tk.StringVar(value=available_currencies[3])
 currency5 = tk.StringVar(value=available_currencies[4])
 
 currency_selectors = [
-    ttk.Combobox(root, textvariable=currency1, values=available_currencies),
-    ttk.Combobox(root, textvariable=currency2, values=available_currencies),
-    ttk.Combobox(root, textvariable=currency3, values=available_currencies),
-    ttk.Combobox(root, textvariable=currency4, values=available_currencies),
-    ttk.Combobox(root, textvariable=currency5, values=available_currencies)
+    ttk.Combobox(top_left_frame, textvariable=currency1, values=available_currencies),
+    ttk.Combobox(top_left_frame, textvariable=currency2, values=available_currencies),
+    ttk.Combobox(top_left_frame, textvariable=currency3, values=available_currencies),
+    ttk.Combobox(top_left_frame, textvariable=currency4, values=available_currencies),
+    ttk.Combobox(top_left_frame, textvariable=currency5, values=available_currencies)
 ]
 
 # Function to handle currency selection changes
@@ -154,26 +162,33 @@ def on_currency_select(event):
 
 # Place currency selectors in a vertical column on the left side
 for i, selector in enumerate(currency_selectors):
-    selector.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+    selector.grid(row=i+1, column=0, padx=5, pady=10, sticky="w")
     selector.bind("<<ComboboxSelected>>", on_currency_select)
 
 # Matrix to display conversion rates
 conversion_rates = [[None for _ in range(6)] for _ in range(6)]
 
-# Setup headers and initialize matrix cells
-conversion_rates[0][0] = tk.Label(root, text="From/To", borderwidth=1, relief="solid", width=15)
-conversion_rates[0][0].grid(row=0, column=1, sticky="nsew")
+# matrix view title
+matrix_title = tk.Label(top_right_frame, text="Exchange Rate Matrix", font=('Arial', 12, 'bold'))
+matrix_title.grid(row=0, column=0, columnspan=6, padx=5, pady=5, sticky="w")
+
+# set up headers and initialize matrix cells
+conversion_rates[0][0] = tk.Label(top_right_frame, text="From/To", borderwidth=1, relief="solid", width=15, height=2)
+conversion_rates[0][0].grid(row=1, column=0, sticky="nsew")
 
 for i in range(5):
-    conversion_rates[0][i+1] = tk.Label(root, text="N/A", borderwidth=1, relief="solid", width=15)
-    conversion_rates[0][i+1].grid(row=0, column=i+2, sticky="nsew")  # Top row headers
+    conversion_rates[0][i+1] = tk.Label(top_right_frame, text="N/A", borderwidth=1, relief="solid", width=15, height=2)
+    conversion_rates[0][i+1].grid(row=1, column=i+1, sticky="nsew")  # Top row headers
 
-    conversion_rates[i+1][0] = tk.Label(root, text="N/A", borderwidth=1, relief="solid", width=15)
-    conversion_rates[i+1][0].grid(row=i+1, column=1, sticky="nsew")  # Left column headers
+    conversion_rates[i+1][0] = tk.Label(top_right_frame, text="N/A", borderwidth=1, relief="solid", width=15, height=2)
+    conversion_rates[i+1][0].grid(row=i+2, column=0, sticky="nsew")  # Left column headers
 
     for j in range(5):
-        conversion_rates[i+1][j+1] = tk.Label(root, text="N/A", borderwidth=1, relief="solid", width=15)
-        conversion_rates[i+1][j+1].grid(row=i+1, column=j+2, sticky="nsew")  # Conversion rates
+        conversion_rates[i+1][j+1] = tk.Label(top_right_frame, text="N/A", borderwidth=1, relief="solid", width=15, height=2)
+        conversion_rates[i+1][j+1].grid(row=i+2, column=j+1, sticky="nsew")  # Conversion rates
+
+# bottom left frame (show arbitrage and percentage gain)
+
 
 # Initialize the matrix view with default values
 update_matrix_view()
