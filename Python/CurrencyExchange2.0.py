@@ -84,7 +84,7 @@ class BellmanFord:
     def __init__(self, ex):
         self.ex = ex
 
-    def find_arbitrage_and_shortest_path(self, edges, rates, start_currency, end_currency, epsilon=0.01):
+    def find_arbitrage_and_shortest_path(self, edges, start_currency, end_currency):
         # Extract all unique nodes
         nodes = set(u for u, _, _ in edges).union(v for _, v, _ in edges)
         distance = {node: self.INF for node in nodes}
@@ -216,7 +216,7 @@ def update_matrix_view(event=None):
         # Detect arbitrage
         edges = create_graph_from_rates(exchange_rates)
         bellman_ford = BellmanFord(ex)
-        bellman_ford.find_arbitrage_and_shortest_path(edges, exchange_rates, selected_currency_1.get(), selected_currency_2.get(), epsilon=0.01)
+        bellman_ford.find_arbitrage_and_shortest_path(edges, selected_currency_1.get(), selected_currency_2.get())
 
         # Update arbitrage info
         arbitrage_info.set(ex.arbitrage_info)
@@ -259,8 +259,7 @@ def on_dropdown_select(event):
     # Detect arbitrage
     edges = create_graph_from_rates(exchange_rates)
     bellman_ford = BellmanFord(ex)
-    bellman_ford.find_arbitrage_and_shortest_path(edges, exchange_rates, selected_currency_1.get(), selected_currency_2.get(),
-                                                  epsilon=0.01)
+    bellman_ford.find_arbitrage_and_shortest_path(edges, selected_currency_1.get(), selected_currency_2.get())
     # Update arbitrage info
     arbitrage_info.set(ex.arbitrage_info)
 
@@ -358,7 +357,7 @@ def update_matrix_view_with_custom_rates(custom_currencies):
         # Detect arbitrage
         edges = create_graph_from_rates(exchange_rates)
         bellman_ford = BellmanFord(ex)
-        bellman_ford.find_arbitrage_and_shortest_path(edges, exchange_rates, selected_currency_1.get(), selected_currency_2.get(), epsilon=0.01)
+        bellman_ford.find_arbitrage_and_shortest_path(edges, selected_currency_1.get(), selected_currency_2.get())
 
         # Update arbitrage info
         arbitrage_info.set(ex.arbitrage_info)
