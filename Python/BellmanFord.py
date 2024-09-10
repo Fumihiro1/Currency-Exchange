@@ -78,9 +78,9 @@ class BellmanFord:
         shortest_path = self._reconstruct_path(predecessor, start_currency, end_currency)
         if shortest_path:
             path_str = ' -> '.join(shortest_path)
-            self.ex.cycle = f"Shortest path from {start_currency} to {end_currency}: {path_str}"
+            self.ex.path_info = f"Shortest path from {start_currency} to {end_currency}: {path_str}"
         else:
-            self.ex.cycle = "No path found."
+            self.ex.path_info = "No path found."
 
     def _reconstruct_path(self, predecessor, start_currency, end_currency):
         path = []

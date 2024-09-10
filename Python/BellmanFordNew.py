@@ -75,14 +75,14 @@ class BellmanFord:
             path = ' -> '.join(cycle)
             self.ex.arbitrage_info = (f"Arbitrage opportunity found: {path}\n"
                                         f"Potential gain: {(gain_product - 1) * 100:.2f}%")
-            self.ex.cycle = "No path found. Due to arbitrage present."
+            self.ex.path_info = "No path found. Due to arbitrage present."
         else:
             self.ex.arbitrage_info = "No arbitrage opportunity detected."
             # Find the shortest path from start_currency to end_currency
             shortest_path = self._reconstruct_path(predecessor, start_currency, end_currency)
             if shortest_path:
                 path_str = ' -> '.join(shortest_path)
-                self.ex.cycle = f"Path from {start_currency} to {end_currency}: {path_str}"
+                self.ex.path_info = f"Path from {start_currency} to {end_currency}: {path_str}"
 
     def _reconstruct_path(self, predecessor, start_currency, end_currency):
         path = []

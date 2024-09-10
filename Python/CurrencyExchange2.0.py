@@ -75,7 +75,7 @@ exchange_rates_no_arbitrage_indirect = {
 
 class Labels:
     def __init__(self):
-        self.cycle = ""
+        self.path_info = ""
         self.arbitrage_info = ""
 
 class BellmanFord:
@@ -141,14 +141,14 @@ class BellmanFord:
             path = ' -> '.join(cycle)
             self.ex.arbitrage_info = (f"Arbitrage opportunity found: {path}\n"
                                         f"Potential gain: {(gain_product - 1) * 100:.2f}%")
-            self.ex.cycle = "No path found. Due to arbitrage present."
+            self.ex.path_info = "No path found. Due to arbitrage present."
         else:
             self.ex.arbitrage_info = "No arbitrage opportunity detected."
             # Find the shortest path from start_currency to end_currency
             shortest_path = self._reconstruct_path(predecessor, start_currency, end_currency)
             if shortest_path:
                 path_str = ' -> '.join(shortest_path)
-                self.ex.cycle = f"Path from {start_currency} to {end_currency}: {path_str}"
+                self.ex.path_info = f"Path from {start_currency} to {end_currency}: {path_str}"
 
     def _reconstruct_path(self, predecessor, start_currency, end_currency):
         path = []
@@ -222,7 +222,7 @@ def update_matrix_view(event=None):
         arbitrage_info.set(ex.arbitrage_info)
 
         # Update the best path info
-        bestpath_info.set(ex.cycle)
+        bestpath_info.set(ex.path_info)
 
 def create_graph_from_rates(rates):
     edges = []
@@ -265,7 +265,7 @@ def on_dropdown_select(event):
     arbitrage_info.set(ex.arbitrage_info)
 
     # Update the best path info
-    bestpath_info.set(ex.cycle)
+    bestpath_info.set(ex.path_info)
 
 # Function to update the second dropdown based on the first dropdown's selection
 def update_second_dropdown(*args):
@@ -364,7 +364,7 @@ def update_matrix_view_with_custom_rates(custom_currencies):
         arbitrage_info.set(ex.arbitrage_info)
 
         # Update the best path info
-        bestpath_info.set(ex.cycle)
+        bestpath_info.set(ex.path_info)
 
 # Initialize Tkinter window
 root = tk.Tk()
