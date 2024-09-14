@@ -1,14 +1,12 @@
-import tkinter as tk
-from tkinter import messagebox, ttk, simpledialog
 import requests
 import numpy as np
+import tkinter as tk
+from tkinter import messagebox, ttk
 
 use_custom_rates = False
 
 exchange_rates = {}
-
 exchange_rates_custom = {}
-
 exchange_rates_no_arbitrage_direct = {
     'A': {
         'B': 1,
@@ -41,7 +39,6 @@ exchange_rates_no_arbitrage_direct = {
         'D': 1
     }
 }
-
 exchange_rates_no_arbitrage_indirect = {
     'A': {
         'B': 0.5,
@@ -77,13 +74,13 @@ exchange_rates_no_arbitrage_indirect = {
 
 class Labels:
     def __init__(self):
-        self.path_info = ""
-        self.arbitrage_info = ""
+        self.path_info = ("")
+        self.arbitrage_info = ("")
 
 class BellmanFord:
     INF = float('inf')
 
-    def __init__(self, ex):
+    def __init(self, ex):
         self.ex = ex
 
     def find_arbitrage_and_shortest_path(self, edges, start_currency, end_currency):
@@ -142,7 +139,7 @@ class BellmanFord:
             # Check if the gain product exceeds the threshold
             path = ' -> '.join(cycle)
             self.ex.arbitrage_info = (f"Arbitrage opportunity found: {path}\n"
-                                        f"Potential gain: {(gain_product - 1) * 100:.2f}%")
+                                      f"Potential gain: {(gain_product - 1) * 100:.2f}%")
             self.ex.path_info = "No path found. Due to arbitrage present."
         else:
             self.ex.arbitrage_info = "No arbitrage opportunity detected."
@@ -193,260 +190,9 @@ def fetch_exchange_rates(currencies):
         except requests.exceptions.RequestException as e:
             print(f"Error fetching exchange rates: {e}")
 
-# Function to update the matrix view with fetched exchange rates
-def update_matrix_view(event=None):
-    global exchange_rates
 
-    # Fetch selected currencies from dropdowns (allow blanks)
-    selected_currencies = [currency1.get(), currency2.get(), currency3.get(), currency4.get(), currency5.get()]
 
-    # Ensure there are at least two non-blank selections
-    if len([currency for currency in selected_currencies if currency]) < 2:
-        messagebox.showerror("Selection Error", "Please select at least two different currencies.")
-        return
-
-    # Fetch exchange rates for non-blank currencies only
-    non_blank_currencies = [currency for currency in selected_currencies if currency]
-    fetch_exchange_rates(non_blank_currencies)
-    update_conversion_rate_dropdowns()
-
-    for i, currency in enumerate(selected_currencies):
-        # Set the table headers; if currency is blank, set cell to blank
-        conversion_rates[0][i + 1].config(text=currency if currency else "")
-        conversion_rates[i + 1][0].config(text=currency if currency else "")
-
-        for j, rate_currency in enumerate(selected_currencies):
-            if i == j and currency:  # Diagonal cells should show 1.000 for non-blank currencies
-                conversion_rates[i + 1][j + 1].config(text="1.000")
-            elif not currency or not rate_currency:  # If any currency is blank, set cell to blank
-                conversion_rates[i + 1][j + 1].config(text="")
-            else:
-                # Otherwise, set the fetched exchange rate or 'N/A' if not available
-                rate = exchange_rates.get(currency, {}).get(rate_currency, 'N/A')
-                conversion_rates[i + 1][j + 1].config(text=f"{rate:.3f}" if rate != 'N/A' else 'N/A')
-
-    # Detect arbitrage only if there are at least two selected currencies (non-blank)
-    if len(non_blank_currencies) >= 2:
-        edges = create_graph_from_rates(exchange_rates)
-        bellman_ford = BellmanFord(ex)
-        bellman_ford.find_arbitrage_and_shortest_path(edges, selected_currency_1.get(), selected_currency_2.get())
-
-        # Update arbitrage info
-        arbitrage_info.set(ex.arbitrage_info)
-
-        # Update the best path info
-        bestpath_info.set(ex.path_info)
-    else:
-        # Clear arbitrage and path info if fewer than two currencies are selected
-        arbitrage_info.set("")
-        bestpath_info.set("")
-
-def create_graph_from_rates(rates):
-    edges = []
-    for from_currency in rates:
-        for to_currency in rates:
-            if from_currency != to_currency and from_currency and to_currency:  # Skip blanks
-                rate = rates[from_currency].get(to_currency, 'N/A')
-                if rate != 'N/A':
-                    # Convert rate to float and round it to 3 decimal places
-                    rate_value = round(float(rate), 3)
-                    # Create edge with weight as negative log of rate (rounded to 3 decimal places)
-                    weight = -round(np.log10(rate_value), 3)
-                    edges.append((from_currency, to_currency, weight))
-    return edges
-
-# Function to update the selected_currencies list whenever a selection is made
-def update_selected_currencies(*args):
-    selected_currencies[0] = currency1.get()
-    selected_currencies[1] = currency2.get()
-    selected_currencies[2] = currency3.get()
-    selected_currencies[3] = currency4.get()
-    selected_currencies[4] = currency5.get()
-
-# Function to handle currency selection changes
-def on_currency_select(event):
-    update_matrix_view()
-
-def on_dropdown_select(event):
-    global exchange_rates
-
-    fetch_exchange_rates(selected_currencies)
-
-    update_conversion_rate_dropdowns()
-    # Detect arbitrage
-    edges = create_graph_from_rates(exchange_rates)
-    bellman_ford = BellmanFord(ex)
-    bellman_ford.find_arbitrage_and_shortest_path(edges, selected_currency_1.get(), selected_currency_2.get())
-    # Update arbitrage info
-    arbitrage_info.set(ex.arbitrage_info)
-
-    # Update the best path info
-    bestpath_info.set(ex.path_info)
-
-# Function to update the second dropdown based on the first dropdown's selection
-def update_second_dropdown(*args):
-    selected_1 = selected_currency_1.get()
-    updated_options = [currency for currency in selected_currencies if currency != selected_1 and currency]  # Skip blanks
-    currency_dropdown_2['values'] = updated_options
-
-    # If the selected currency in dropdown 2 is no longer valid, reset it
-    if selected_currency_2.get() == selected_1 or selected_currency_2.get() not in updated_options:
-        selected_currency_2.set(updated_options[0] if updated_options else '')
-
-# Function to update the first dropdown based on the second dropdown's selection
-def update_first_dropdown(*args):
-    selected_2 = selected_currency_2.get()
-    updated_options = [currency for currency in selected_currencies if currency != selected_2 and currency]  # Skip blanks
-    currency_dropdown_1['values'] = updated_options
-
-    # If the selected currency in dropdown 1 is no longer valid, reset it
-    if selected_currency_1.get() == selected_2 or selected_currency_1.get() not in updated_options:
-        selected_currency_1.set(updated_options[0] if updated_options else '')
-
-def update_conversion_rate_dropdowns(*args):
-    update_first_dropdown()
-    update_second_dropdown()
-
-# Add a button to set the selected currencies to those in the exchange_rates_no_arbitrage dictionary
-def set_custom_currencies(custom_currencies):
-    # Use currencies to update the dropdowns
-    available_currencies_in_dict = list(custom_currencies.keys())
-
-    # Disable interaction with dropdowns
-    for selector in currency_selectors:
-        selector.config(state="disabled")
-
-    # Set the available currencies from the dictionary into the dropdowns (up to 5)
-    currency_list = [currency1, currency2, currency3, currency4, currency5]
-
-    # Loop through the selectors and set values based on available currencies
-    for i, selector in enumerate(currency_list):
-        if i < len(available_currencies_in_dict):
-            selector.set(available_currencies_in_dict[i])
-        else:
-            selector.set("")  # Clear the remaining selectors if fewer than 5 currencies are available
-
-    # Enable custom rates usage
-    use_custom_rates = True
-
-    # Update the selected currencies list and matrix view with custom rates
-    update_matrix_view_with_custom_rates(custom_currencies)
-
-def reset_gui():
-    use_custom_rates = False
-
-    # Set to first 5 moneys
-    currency1.set(available_currencies[0])
-    currency2.set(available_currencies[1])
-    currency3.set(available_currencies[2])
-    currency4.set(available_currencies[3])
-    currency5.set(available_currencies[4])
-
-    # Disable interaction with dropdowns
-    for selector in currency_selectors:
-        selector.config(state="enabled")
-
-    update_matrix_view()
-
-def update_matrix_view_with_custom_rates(custom_currencies):
-    # Fetch selected currencies from dropdowns (allow blanks)
-    selected_currencies = [currency1.get(), currency2.get(), currency3.get(), currency4.get(), currency5.get()]
-
-    # Filter out any blank selections
-    non_blank_currencies = [currency for currency in selected_currencies if currency]
-
-    # Ensure there are at least two non-blank selections
-    if len(non_blank_currencies) < 2:
-        messagebox.showerror("Selection Error", "Please select at least two different currencies.")
-        return
-
-    # Use custom exchange rates for the non-blank selected currencies
-    exchange_rates = {currency: custom_currencies[currency] for currency in non_blank_currencies}
-
-    # Update the matrix view with the selected currencies and their rates
-    for i, currency in enumerate(selected_currencies):
-        # Set the table headers; if currency is blank, set cell to blank
-        conversion_rates[0][i + 1].config(text=currency if currency else "")
-        conversion_rates[i + 1][0].config(text=currency if currency else "")
-
-        for j, rate_currency in enumerate(selected_currencies):
-            if i == j and currency:  # Diagonal cells should show 1.000 for non-blank currencies
-                conversion_rates[i + 1][j + 1].config(text="1.000")
-            elif not currency or not rate_currency:  # If any currency is blank, set cell to blank
-                conversion_rates[i + 1][j + 1].config(text="")
-            else:
-                # Otherwise, set the fetched exchange rate or 'N/A' if not available
-                rate = exchange_rates.get(currency, {}).get(rate_currency, 'N/A')
-                conversion_rates[i + 1][j + 1].config(text=f"{rate:.3f}" if rate != 'N/A' else 'N/A')
-
-    update_conversion_rate_dropdowns()
-
-    # Detect arbitrage if enough currencies are selected
-    edges = create_graph_from_rates(exchange_rates)
-    bellman_ford = BellmanFord(ex)
-    bellman_ford.find_arbitrage_and_shortest_path(edges, selected_currency_1.get(), selected_currency_2.get())
-
-    # Update arbitrage info
-    arbitrage_info.set(ex.arbitrage_info)
-
-    # Update the best path info
-    bestpath_info.set(ex.path_info)
-
-def get_input(input_text_field, input_window):
-    exchange_rates_custom = {}
-
-    # Fetch the text from the input field and store it in a variable
-    user_input = input_text_field.get("1.0", "end-1c")  # Get all the text in the text field
-
-    lines = user_input.strip().split('\n')
-
-    # First line is the number of rows/columns
-    num_columns = int(lines[0].split(',')[0].strip())
-
-    if num_columns < 2 or num_columns > 5:
-        messagebox.showerror("Input Error", "Please input between 2 and 5 currencies")
-
-    # The rest of the first line are the labels for the rows/columns
-    labels = [label.strip() for label in lines[0].split(',')[1:]]
-
-    # Ensure that the number of labels matches the number of columns
-    if len(labels) != num_columns:
-        messagebox.showerror("Input Error", "Number of labels does not match the number of columns")
-
-    # Process the exchange rate data
-    for i in range(1, num_columns + 1):
-        rates = list(map(float, lines[i].strip().split()))
-        exchange_rates_custom[labels[i - 1]] = {}
-
-        for j in range(num_columns):
-            if i - 1 != j:  # Skip self-reference
-                exchange_rates_custom[labels[i - 1]][labels[j]] = rates[j]
-
-    input_window.destroy()
-    set_custom_currencies(exchange_rates_custom)
-
-def create_own_matrix():
-    input_window = tk.Tk()
-    input_window.geometry('400x400')
-    input_window.title("Input Your Own")
-
-    inputFrame = tk.Frame(input_window)
-    inputFrame.pack(pady=20)
-
-    # Label to prompt the user
-    instruction_label = tk.Label(inputFrame, text="Please enter the data in the desired format:")
-    instruction_label.pack(pady=10)
-
-    # Text field for the user to input data
-    input_text_field = tk.Text(inputFrame, height=10, width=40)
-    input_text_field.pack(pady=10)
-
-    # Button to retrieve the entered text
-    submit_button = tk.Button(inputFrame, text="Submit", command=lambda: get_input(input_text_field, input_window))
-    submit_button.pack(pady=10)
-
-    input_window.mainloop()
-
+################################################################
 # Initialize Tkinter window
 root = tk.Tk()
 root.geometry('1200x550')
