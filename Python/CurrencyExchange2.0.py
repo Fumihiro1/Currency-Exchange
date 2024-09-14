@@ -1,11 +1,13 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, simpledialog
 import requests
 import numpy as np
 
 use_custom_rates = False
 
 exchange_rates = {}
+
+exchange_rates_custom = None
 
 exchange_rates_no_arbitrage_direct = {
     'A': {
@@ -382,9 +384,64 @@ def update_matrix_view_with_custom_rates(custom_currencies):
         # Update the best path info
         bestpath_info.set(ex.path_info)
 
+def get_input(input_text_field):
+    # Fetch the text from the input field and store it in a variable
+    user_input = input_text_field.get("1.0", "end-1c")  # Get all the text in the text field
+
+    lines = user_input.strip().split('\n')
+
+    # First line is the number of rows/columns
+    num_columns = int(lines[0].split(',')[0].strip())
+
+    if num_columns < 2 or num_columns > 5:
+        messagebox.showerror("Input Error", "Please input between 2 and 5 currencies")
+
+    # The rest of the first line are the labels for the rows/columns
+    labels = [label.strip() for label in lines[0].split(',')[1:]]
+
+    # Ensure that the number of labels matches the number of columns
+    if len(labels) != num_columns:
+        messagebox.showerror("Input Error", "Number of labels does not match the number of columns")
+
+    exchange_rates_custom = {}
+
+    # Process the exchange rate data
+    for i in range(1, num_columns + 1):
+        rates = list(map(float, lines[i].strip().split()))
+        exchange_rates_custom[labels[i - 1]] = {}
+
+        for j in range(num_columns):
+            if i - 1 != j:  # Skip self-reference
+                exchange_rates_custom[labels[i - 1]][labels[j]] = rates[j]
+
+    return exchange_rates_custom
+
+
+def create_own_matrix():
+    input_window = tk.Tk()
+    input_window.geometry('400x400')
+    input_window.title("Input Your Own")
+
+    inputFrame = tk.Frame(input_window)
+    inputFrame.pack(pady=20)
+
+    # Label to prompt the user
+    instruction_label = tk.Label(inputFrame, text="Please enter the data in the desired format:")
+    instruction_label.pack(pady=10)
+
+    # Text field for the user to input data
+    input_text_field = tk.Text(inputFrame, height=10, width=40)
+    input_text_field.pack(pady=10)
+
+    # Button to retrieve the entered text
+    submit_button = tk.Button(inputFrame, text="Submit", command=lambda: get_input(input_text_field))
+    submit_button.pack(pady=10)
+
+    input_window.mainloop()
+
 # Initialize Tkinter window
 root = tk.Tk()
-root.geometry('1200x500')
+root.geometry('1200x550')
 root.title("Currency Exchange")
 
 # Define available currencies
@@ -507,9 +564,11 @@ arbitrage_button.grid(row=1, column=0, padx=10, pady=10, sticky="w")
 arbitrage_button2 = ttk.Button(bottom_left_frame, text="Case 2: No Arbitrage, Indirect Path", command=lambda: set_custom_currencies(exchange_rates_no_arbitrage_indirect))
 arbitrage_button2.grid(row=2, column=0, padx=10, pady=10, sticky="w")
 
-
 reset_button = ttk.Button(bottom_left_frame, text="Reset", command=lambda: reset_gui())
 reset_button.grid(row=3, column=0, padx=10, pady=10, sticky="w")
+
+input_button = ttk.Button(root, text="Input Custom Matrix", command=create_own_matrix)
+input_button.grid(row=4, column=0, padx=10, pady=10, sticky="w")
 
 # Refresh matrix view
 update_matrix_view()
