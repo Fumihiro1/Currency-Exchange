@@ -7,7 +7,7 @@ use_custom_rates = False
 
 exchange_rates = {}
 
-exchange_rates_custom = None
+exchange_rates_custom = {}
 
 exchange_rates_no_arbitrage_direct = {
     'A': {
@@ -384,7 +384,7 @@ def update_matrix_view_with_custom_rates(custom_currencies):
         # Update the best path info
         bestpath_info.set(ex.path_info)
 
-def get_input(input_text_field):
+def get_input(input_text_field, input_window):
     # Fetch the text from the input field and store it in a variable
     user_input = input_text_field.get("1.0", "end-1c")  # Get all the text in the text field
 
@@ -403,8 +403,6 @@ def get_input(input_text_field):
     if len(labels) != num_columns:
         messagebox.showerror("Input Error", "Number of labels does not match the number of columns")
 
-    exchange_rates_custom = {}
-
     # Process the exchange rate data
     for i in range(1, num_columns + 1):
         rates = list(map(float, lines[i].strip().split()))
@@ -414,7 +412,8 @@ def get_input(input_text_field):
             if i - 1 != j:  # Skip self-reference
                 exchange_rates_custom[labels[i - 1]][labels[j]] = rates[j]
 
-    return exchange_rates_custom
+    input_window.destroy()
+    set_custom_currencies(exchange_rates_custom)
 
 
 def create_own_matrix():
@@ -434,7 +433,7 @@ def create_own_matrix():
     input_text_field.pack(pady=10)
 
     # Button to retrieve the entered text
-    submit_button = tk.Button(inputFrame, text="Submit", command=lambda: get_input(input_text_field))
+    submit_button = tk.Button(inputFrame, text="Submit", command=lambda: get_input(input_text_field, input_window))
     submit_button.pack(pady=10)
 
     input_window.mainloop()
