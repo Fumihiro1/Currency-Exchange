@@ -195,25 +195,36 @@ def fetch_exchange_rates(currencies):
 def update_matrix_view(event=None):
     global exchange_rates
 
+    # Fetch selected currencies from dropdowns (allow blanks)
     selected_currencies = [currency1.get(), currency2.get(), currency3.get(), currency4.get(), currency5.get()]
-    if len(set(selected_currencies)) < len(selected_currencies):
-        messagebox.showerror("Duplicate Currency", "Please select different currencies for each dropdown.")
+
+    # Ensure there are at least two non-blank selections
+    if len([currency for currency in selected_currencies if currency]) < 2:
+        messagebox.showerror("Selection Error", "Please select at least two different currencies.")
         return
 
-    fetch_exchange_rates(selected_currencies)
+    # Fetch exchange rates for non-blank currencies only
+    non_blank_currencies = [currency for currency in selected_currencies if currency]
+    fetch_exchange_rates(non_blank_currencies)
     update_conversion_rate_dropdowns()
 
     for i, currency in enumerate(selected_currencies):
-        conversion_rates[0][i + 1].config(text=currency)
-        conversion_rates[i + 1][0].config(text=currency)
+        # Set the table headers; if currency is blank, set cell to blank
+        conversion_rates[0][i + 1].config(text=currency if currency else "")
+        conversion_rates[i + 1][0].config(text=currency if currency else "")
+
         for j, rate_currency in enumerate(selected_currencies):
-            if i == j:
+            if i == j and currency:  # Diagonal cells should show 1.000 for non-blank currencies
                 conversion_rates[i + 1][j + 1].config(text="1.000")
+            elif not currency or not rate_currency:  # If any currency is blank, set cell to blank
+                conversion_rates[i + 1][j + 1].config(text="")
             else:
-                rate = exchange_rates[currency].get(rate_currency, 'N/A')
+                # Otherwise, set the fetched exchange rate or 'N/A' if not available
+                rate = exchange_rates.get(currency, {}).get(rate_currency, 'N/A')
                 conversion_rates[i + 1][j + 1].config(text=f"{rate:.3f}" if rate != 'N/A' else 'N/A')
 
-        # Detect arbitrage
+    # Detect arbitrage only if there are at least two selected currencies (non-blank)
+    if len(non_blank_currencies) >= 2:
         edges = create_graph_from_rates(exchange_rates)
         bellman_ford = BellmanFord(ex)
         bellman_ford.find_arbitrage_and_shortest_path(edges, selected_currency_1.get(), selected_currency_2.get())
@@ -223,12 +234,17 @@ def update_matrix_view(event=None):
 
         # Update the best path info
         bestpath_info.set(ex.path_info)
+    else:
+        # Clear arbitrage and path info if fewer than two currencies are selected
+        arbitrage_info.set("")
+        bestpath_info.set("")
+
 
 def create_graph_from_rates(rates):
     edges = []
     for from_currency in rates:
         for to_currency in rates:
-            if from_currency != to_currency:
+            if from_currency != to_currency and from_currency and to_currency:  # Skip blanks
                 rate = rates[from_currency].get(to_currency, 'N/A')
                 if rate != 'N/A':
                     # Convert rate to float and round it to 3 decimal places
@@ -237,6 +253,7 @@ def create_graph_from_rates(rates):
                     weight = -round(np.log10(rate_value), 3)
                     edges.append((from_currency, to_currency, weight))
     return edges
+
 
 # Function to update the selected_currencies list whenever a selection is made
 def update_selected_currencies(*args):
@@ -269,7 +286,7 @@ def on_dropdown_select(event):
 # Function to update the second dropdown based on the first dropdown's selection
 def update_second_dropdown(*args):
     selected_1 = selected_currency_1.get()
-    updated_options = [currency for currency in selected_currencies if currency != selected_1]
+    updated_options = [currency for currency in selected_currencies if currency != selected_1 and currency]  # Skip blanks
     currency_dropdown_2['values'] = updated_options
 
     # If the selected currency in dropdown 2 is no longer valid, reset it
@@ -279,7 +296,7 @@ def update_second_dropdown(*args):
 # Function to update the first dropdown based on the second dropdown's selection
 def update_first_dropdown(*args):
     selected_2 = selected_currency_2.get()
-    updated_options = [currency for currency in selected_currencies if currency != selected_2]
+    updated_options = [currency for currency in selected_currencies if currency != selected_2 and currency]  # Skip blanks
     currency_dropdown_1['values'] = updated_options
 
     # If the selected currency in dropdown 1 is no longer valid, reset it
@@ -371,7 +388,7 @@ root.geometry('1200x500')
 root.title("Currency Exchange")
 
 # Define available currencies
-available_currencies = ['USD', 'NZD', 'AUD', 'EUR', 'JPY', 'THB', 'INR', 'BOB', 'BRL']
+available_currencies = ['USD', 'NZD', 'AUD', 'EUR', 'JPY', 'THB', 'INR', 'BOB', 'BRL', '']
 
 # Create frames
 top_left_frame = tk.Frame(root)
