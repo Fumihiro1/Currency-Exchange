@@ -405,6 +405,7 @@ def get_input(input_text_field, input_window):
 
     if num_columns < 2 or num_columns > 5:
         messagebox.showerror("Input Error", "Please input between 2 and 5 currencies")
+        return
 
     # The rest of the first line are the labels for the rows/columns
     labels = [label.strip() for label in lines[0].split(',')[1:]]
@@ -412,6 +413,7 @@ def get_input(input_text_field, input_window):
     # Ensure that the number of labels matches the number of columns
     if len(labels) != num_columns:
         messagebox.showerror("Input Error", "Number of labels does not match the number of columns")
+        return
 
     # Process the exchange rate data
     for i in range(1, num_columns + 1):
