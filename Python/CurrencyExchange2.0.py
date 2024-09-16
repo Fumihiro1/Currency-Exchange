@@ -270,8 +270,6 @@ def on_currency_select(event):
 def on_dropdown_select(event):
     global exchange_rates
 
-    fetch_exchange_rates(selected_currencies)
-
     update_conversion_rate_dropdowns()
     # Detect arbitrage
     edges = create_graph_from_rates(exchange_rates)
