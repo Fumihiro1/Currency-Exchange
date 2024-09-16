@@ -3,11 +3,7 @@ from tkinter import messagebox, ttk, simpledialog
 import requests
 import numpy as np
 
-use_custom_rates = False
-
 exchange_rates = {}
-
-exchange_rates_custom = {}
 
 exchange_rates_no_arbitrage_direct = {
     'A': {
@@ -174,24 +170,20 @@ class BellmanFord:
 # Function to fetch exchange rates from the API
 def fetch_exchange_rates(currencies):
     global exchange_rates
-    global use_custom_rates
+    # Fetch live exchange rates from API
+    try:
+        for base_currency in currencies:
+            response = requests.get(f"https://api.exchangerate-api.com/v4/latest/{base_currency.strip()}")
+            response.raise_for_status()  # Check for request errors
+            all_rates = response.json().get('rates', {})
 
-    if use_custom_rates is False:
+            # Filter rates to include only those in the 'currencies' list
+            filtered_rates = {currency: rate for currency, rate in all_rates.items() if
+                              currency in currencies and currency != base_currency}
 
-        # Fetch live exchange rates from API
-        try:
-            for base_currency in currencies:
-                response = requests.get(f"https://api.exchangerate-api.com/v4/latest/{base_currency.strip()}")
-                response.raise_for_status()  # Check for request errors
-                all_rates = response.json().get('rates', {})
-
-                # Filter rates to include only those in the 'currencies' list
-                filtered_rates = {currency: rate for currency, rate in all_rates.items() if
-                                    currency in currencies and currency != base_currency}
-
-                exchange_rates[base_currency] = filtered_rates
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching exchange rates: {e}")
+            exchange_rates[base_currency] = filtered_rates
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching exchange rates: {e}")
 
 # Function to update the matrix view with fetched exchange rates
 def update_matrix_view(event=None):
@@ -326,14 +318,11 @@ def set_custom_currencies(custom_currencies):
         else:
             selector.set("")  # Clear the remaining selectors if fewer than 5 currencies are available
 
-    # Enable custom rates usage
-    use_custom_rates = True
 
     # Update the selected currencies list and matrix view with custom rates
     update_matrix_view_with_custom_rates(custom_currencies)
 
 def reset_gui():
-    use_custom_rates = False
 
     # Set to first 5 moneys
     currency1.set(available_currencies[0])
@@ -349,6 +338,8 @@ def reset_gui():
     update_matrix_view()
 
 def update_matrix_view_with_custom_rates(custom_currencies):
+
+    global exchange_rates
     # Fetch selected currencies from dropdowns (allow blanks)
     selected_currencies = [currency1.get(), currency2.get(), currency3.get(), currency4.get(), currency5.get()]
 
