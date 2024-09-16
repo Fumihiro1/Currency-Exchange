@@ -1,88 +1,51 @@
 import tkinter as tk
-from tkinter import messagebox, ttk, simpledialog
+from tkinter import messagebox, ttk
 import requests
 import numpy as np
 
+# Global dictionary to store exchange rates
 exchange_rates = {}
 
+# Static dictionaries for exchange rates with no arbitrage (direct and indirect)
 exchange_rates_no_arbitrage_direct = {
-    'A': {
-        'B': 1,
-        'C': 1,
-        'D': 1,
-        'E': 1
-    },
-    'B': {
-        'A': 1,
-        'C': 1,
-        'D': 1,
-        'E': 1
-    },
-    'C': {
-        'A': 1,
-        'B': 1,
-        'D': 1,
-        'E': 1
-    },
-    'D': {
-        'A': 1,
-        'B': 1,
-        'C': 1,
-        'E': 1
-    },
-    'E': {
-        'A': 1,
-        'B': 1,
-        'C': 1,
-        'D': 1
-    }
+    'A': {'B': 1, 'C': 1, 'D': 1, 'E': 1},
+    'B': {'A': 1, 'C': 1, 'D': 1, 'E': 1},
+    'C': {'A': 1, 'B': 1, 'D': 1, 'E': 1},
+    'D': {'A': 1, 'B': 1, 'C': 1, 'E': 1},
+    'E': {'A': 1, 'B': 1, 'C': 1, 'D': 1}
 }
 
 exchange_rates_no_arbitrage_indirect = {
-    'A': {
-        'B': 0.5,
-        'C': 0.9,
-        'D': 0.9,
-        'E': 0.5
-    },
-    'B': {
-        'A': 0.8,
-        'C': 0.8,
-        'D': 1,
-        'E': 1
-    },
-    'C': {
-        'A': 1,
-        'B': 0.5,
-        'D': 1,
-        'E': 1
-    },
-    'D': {
-        'A': 1,
-        'B': 1,
-        'C': 1,
-        'E': 1
-    },
-    'E': {
-        'A': 1,
-        'B': 1,
-        'C': 1,
-        'D': 1
-    }
+    'A': {'B': 0.5, 'C': 0.9, 'D': 0.9, 'E': 0.5},
+    'B': {'A': 0.8, 'C': 0.8, 'D': 1, 'E': 1},
+    'C': {'A': 1, 'B': 0.5, 'D': 1, 'E': 1},
+    'D': {'A': 1, 'B': 1, 'C': 1, 'E': 1},
+    'E': {'A': 1, 'B': 1, 'C': 1, 'D': 1}
 }
 
 class Labels:
+    """ Class to store and manage label texts."""
     def __init__(self):
-        self.path_info = ""
-        self.arbitrage_info = ""
+        self.path_info = "" # Best path label
+        self.arbitrage_info = "" # Arbitrage path and percentage gain label
 
 class BellmanFord:
+    """ Class to find arbitrage opportunities and shortest paths using the Bellman-Ford algorithm"""
     INF = float('inf')
 
     def __init__(self, ex):
         self.ex = ex
 
     def find_arbitrage_and_shortest_path(self, edges, start_currency, end_currency):
+        """
+        Find arbitrage opportunities and the shortest path between two currencies.
+
+        Args:
+            edges (list of tuples): List of edges in the form (from_currency, to_currency, rate).
+            start_currency (str): The starting currency.
+            end_currency (str): The ending currency.
+        """
+
         # Extract all unique nodes
         nodes = set(u for u, _, _ in edges).union(v for _, v, _ in edges)
         distance = {node: self.INF for node in nodes}
@@ -126,7 +89,7 @@ class BellmanFord:
                     break
             cycle.reverse()
 
-            # Calculate the gain product
+            # Calculate the product of exchange rates for the detected cycle, calculated using 3 dp rounded values
             gain_product = 1.0
             for i in range(len(cycle) - 1):
                 from_currency = cycle[i]
@@ -135,13 +98,14 @@ class BellmanFord:
                 if rate != 'N/A':
                     gain_product *= round(float(rate), 3)
 
-            # Check if the gain product exceeds the threshold
+            # Construct the output string labels
             path = ' -> '.join(cycle)
             self.ex.arbitrage_info = (f"Arbitrage opportunity found: {path}\n"
                                         f"Potential gain: {(gain_product - 1) * 100:.2f}%")
             self.ex.path_info = "No path found. Due to arbitrage present."
         else:
             self.ex.arbitrage_info = "No arbitrage opportunity detected."
+
             # Find the shortest path from start_currency to end_currency
             shortest_path = self._reconstruct_path(predecessor, start_currency, end_currency)
             if shortest_path:
@@ -149,15 +113,25 @@ class BellmanFord:
                 self.ex.path_info = f"Path from {start_currency} to {end_currency}: {path_str}"
 
     def _reconstruct_path(self, predecessor, start_currency, end_currency):
+        """
+        Reconstruct the shortest path from start_currency to end_currency.
+
+        Args:
+            predecessor (dict): The predecessor map for path reconstruction.
+            start_currency (str): The starting currency.
+            end_currency (str): The ending currency.
+
+        Returns:
+            list: The list of currencies in the shortest path.
+        """
+
         path = []
         current = end_currency
 
-        # Handle cases where end_currency is not reachable
         while current is not None:
             path.append(current)
             current = predecessor[current]
 
-            # If we've reached the start_currency or gone through all predecessors
             if current == start_currency:
                 path.append(start_currency)
                 break
@@ -169,6 +143,13 @@ class BellmanFord:
 
 # Function to fetch exchange rates from the API
 def fetch_exchange_rates(currencies):
+    """
+    Fetch live exchange rates for a list of currencies and store them in a global dictionary.
+
+    Args:
+        currencies (list): List of currency codes to fetch rates for.
+    """
+
     global exchange_rates
     # Fetch live exchange rates from API
     try:
@@ -187,12 +168,15 @@ def fetch_exchange_rates(currencies):
 
 # Function to update the matrix view with fetched exchange rates
 def update_matrix_view(event=None):
+    """
+    Update the matrix view with the latest exchange rates and check for arbitrage opportunities.
+    """
     global exchange_rates
 
     # Fetch selected currencies from dropdowns (allow blanks)
     selected_currencies = [currency1.get(), currency2.get(), currency3.get(), currency4.get(), currency5.get()]
 
-    # Ensure there are at least two non-blank selections
+    # Ensure there are at least two non-blank currencies selected
     if len([currency for currency in selected_currencies if currency]) < 2:
         messagebox.showerror("Selection Error", "Please select at least two different currencies.")
         return
@@ -202,38 +186,42 @@ def update_matrix_view(event=None):
     fetch_exchange_rates(non_blank_currencies)
     update_conversion_rate_dropdowns()
 
+    # Update the matrix view with exchange rates
     for i, currency in enumerate(selected_currencies):
+
         # Set the table headers; if currency is blank, set cell to blank
         conversion_rates[0][i + 1].config(text=currency if currency else "")
         conversion_rates[i + 1][0].config(text=currency if currency else "")
 
         for j, rate_currency in enumerate(selected_currencies):
-            if i == j and currency:  # Diagonal cells should show 1.000 for non-blank currencies
+            if i == j and currency:  # Diagonal cells should show 1.000
                 conversion_rates[i + 1][j + 1].config(text="1.000")
-            elif not currency or not rate_currency:  # If any currency is blank, set cell to blank
+            elif not currency or not rate_currency:  # Cells with blank currencies
                 conversion_rates[i + 1][j + 1].config(text="")
             else:
-                # Otherwise, set the fetched exchange rate or 'N/A' if not available
+                # Set fetched exchange rate or 'N/A'
                 rate = exchange_rates.get(currency, {}).get(rate_currency, 'N/A')
                 conversion_rates[i + 1][j + 1].config(text=f"{rate:.3f}" if rate != 'N/A' else 'N/A')
 
-    # Detect arbitrage only if there are at least two selected currencies (non-blank)
+    # Detect arbitrage if there are at least two selected currencies
     if len(non_blank_currencies) >= 2:
         edges = create_graph_from_rates(exchange_rates)
         bellman_ford = BellmanFord(ex)
         bellman_ford.find_arbitrage_and_shortest_path(edges, selected_currency_1.get(), selected_currency_2.get())
 
-        # Update arbitrage info
+        # Update arbitrage and best path info
         arbitrage_info.set(ex.arbitrage_info)
-
-        # Update the best path info
         bestpath_info.set(ex.path_info)
+
     else:
         # Clear arbitrage and path info if fewer than two currencies are selected
         arbitrage_info.set("")
         bestpath_info.set("")
 
 def create_graph_from_rates(rates):
+    """
+    Create a negative logarithm graph representation of the exchange rates for use with the Bellman-Ford algorithm.
+    """
     edges = []
     for from_currency in rates:
         for to_currency in rates:
@@ -247,19 +235,26 @@ def create_graph_from_rates(rates):
                     edges.append((from_currency, to_currency, weight))
     return edges
 
-# Function to update the selected_currencies list whenever a selection is made
 def update_selected_currencies(*args):
+    """
+    Update the selected currencies list based on current dropdown selections.
+    """
     selected_currencies[0] = currency1.get()
     selected_currencies[1] = currency2.get()
     selected_currencies[2] = currency3.get()
     selected_currencies[3] = currency4.get()
     selected_currencies[4] = currency5.get()
 
-# Function to handle currency selection changes
 def on_currency_select(event):
+    """
+    Handle changes in currency selection and update the matrix view accordingly.
+    """
     update_matrix_view()
 
 def on_dropdown_select(event):
+    """
+    Handle changes in dropdown selections and update exchange rates and arbitrage information.
+    """
     global exchange_rates
 
     fetch_exchange_rates(selected_currencies)
@@ -277,6 +272,9 @@ def on_dropdown_select(event):
 
 # Function to update the second dropdown based on the first dropdown's selection
 def update_second_dropdown(*args):
+    """
+    Update the options in the second currency dropdown based on the selected value of the first dropdown.
+    """
     selected_1 = selected_currency_1.get()
     updated_options = [currency for currency in selected_currencies if currency != selected_1 and currency]  # Skip blanks
     currency_dropdown_2['values'] = updated_options
@@ -287,6 +285,9 @@ def update_second_dropdown(*args):
 
 # Function to update the first dropdown based on the second dropdown's selection
 def update_first_dropdown(*args):
+    """
+    Update the options in the first currency dropdown based on the selected value of the second dropdown.
+    """
     selected_2 = selected_currency_2.get()
     updated_options = [currency for currency in selected_currencies if currency != selected_2 and currency]  # Skip blanks
     currency_dropdown_1['values'] = updated_options
@@ -296,11 +297,17 @@ def update_first_dropdown(*args):
         selected_currency_1.set(updated_options[0] if updated_options else '')
 
 def update_conversion_rate_dropdowns(*args):
+    """
+    Update the options in both currency dropdowns.
+    """
     update_first_dropdown()
     update_second_dropdown()
 
 # Add a button to set the selected currencies to those in the exchange_rates_no_arbitrage dictionary
 def set_custom_currencies(custom_currencies):
+    """
+    Set custom currencies in the dropdowns based on provided rates.
+    """
     # Use currencies to update the dropdowns
     available_currencies_in_dict = list(custom_currencies.keys())
 
@@ -323,22 +330,32 @@ def set_custom_currencies(custom_currencies):
     update_matrix_view_with_custom_rates(custom_currencies)
 
 def reset_gui():
+    """
+    Reset the dropdowns to the first 5 available currencies.
+    """
 
-    # Set to first 5 moneys
     currency1.set(available_currencies[0])
     currency2.set(available_currencies[1])
     currency3.set(available_currencies[2])
     currency4.set(available_currencies[3])
     currency5.set(available_currencies[4])
 
-    # Disable interaction with dropdowns
+    # Enable interaction with dropdowns
     for selector in currency_selectors:
         selector.config(state="enabled")
 
+    # Update the matrix view with the newly set currencies
     update_matrix_view()
 
 def update_matrix_view_with_custom_rates(custom_currencies):
+    """
+    Updates the matrix view using custom exchange rates provided by the user.
 
+    Args:
+        custom_currencies (dict): A dictionary where keys are currency names and values are dictionaries
+                                  of exchange rates, with inner dictionaries mapping other currency names
+                                  to exchange rates.
+    """
     global exchange_rates
     # Fetch selected currencies from dropdowns (allow blanks)
     selected_currencies = [currency1.get(), currency2.get(), currency3.get(), currency4.get(), currency5.get()]
@@ -384,6 +401,14 @@ def update_matrix_view_with_custom_rates(custom_currencies):
     bestpath_info.set(ex.path_info)
 
 def get_input(input_text_field, input_window):
+    """
+    Processes user input for custom exchange rates from a text field.
+    Validates and parses the input data, then updates the currencies with the new custom rates.
+
+    Args:
+        input_text_field (tk.Text): The text field widget where the user inputs the exchange rate data.
+        input_window (tk.Tk): The tkinter window containing the input text field.
+    """
     exchange_rates_custom = {}
 
     # Fetch the text from the input field and store it in a variable
@@ -417,15 +442,31 @@ def get_input(input_text_field, input_window):
     set_custom_currencies(exchange_rates_custom)
 
 def create_own_matrix():
+    """
+    Creates a GUI window for user input of custom exchange rates.
+    Provides instructions and a text field for entering data.
+    Includes a submit button to process the input and update currencies.
+    """
     input_window = tk.Tk()
-    input_window.geometry('400x400')
+    input_window.geometry('400x500')
     input_window.title("Input Your Own")
 
     inputFrame = tk.Frame(input_window)
     inputFrame.pack(pady=20)
 
     # Label to prompt the user
-    instruction_label = tk.Label(inputFrame, text="Please enter the data in the desired format:")
+    instruction_label = tk.Label(
+        inputFrame,
+        text=(
+            "Please enter data formatted similar to the example below:\n\n"
+            "3, A, B, C\n"
+            "1 0.651 0.581\n"
+            "1.531 1 0.952\n"
+            "1.711 1.049 1\n"
+        ),
+        # Align text to the left
+        justify="left"
+    )
     instruction_label.pack(pady=10)
 
     # Text field for the user to input data
@@ -436,6 +477,7 @@ def create_own_matrix():
     submit_button = tk.Button(inputFrame, text="Submit", command=lambda: get_input(input_text_field, input_window))
     submit_button.pack(pady=10)
 
+    # Start the GUI loop
     input_window.mainloop()
 
 # Initialize Tkinter window
